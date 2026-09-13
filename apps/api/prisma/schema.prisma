@@ -25,6 +25,7 @@ model User {
 
   passwordResetTokens PasswordResetToken[]
   refreshTokens       RefreshToken[]
+  legalAcceptances    LegalAcceptance[]
 
   @@map("users")
 }
@@ -59,4 +60,38 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+// Legal V2: User acceptance records for legal documents (LGPD compliance)
+// 
+// DATABASE SECURITY - LGPD Article 7 Consent Proof:
+// PURPOSE LIMITATION: Records exist ONLY as proof of legal document acceptance
+// MINIMAL PII: userId + docVersion + acceptedAt (no IP, User-Agent, or session data)
+// IMMUTABILITY: APPEND-ONLY - never UPDATE acceptedAt or DELETE individual rows
+//   - New acceptance = new row with new docVersion
+//   - No soft-delete of acceptance records
+//   - Purge only via full User CASCADE delete or legal/compliance directive
+// RETENTION: TBD - coordinate with legal/compliance team for retention policy
+// ACCESS CONTROL: API database role should have INSERT + SELECT only (no UPDATE/DELETE)
+// 
+// DOC VERSION FORMAT (SoT aligned with Front/OWNER):
+//   Examples: privacy_v2_2026-09-13, terms_app_v2_2026-09-13,
+//             terms_saas_v2_2026-09-13, payments_notice_v2_2026-09-13
+// 
+// GATE LOGIC (enforced in API, stored generically here):
+//   - All users: privacy_v2_*, terms_app_v2_*
+//   - PROFESSIONAL/Checkout: also terms_saas_v2_*, payments_notice_v2_*
+model LegalAcceptance {
+  id         String   @id @default(cuid())
+  userId     String
+  docVersion String
+  acceptedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, docVersion])
+  @@index([userId])
+  @@index([userId, acceptedAt])
+  @@map("legal_acceptances")
 }
