@@ -665,6 +665,119 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/v1/checkout/session:
+    post:
+      summary: Create Stripe Checkout Session
+      description: |
+        Creates a Stripe Checkout Session for subscription with optional referral code.
+        
+        **PROFESSIONAL-only:** Only users with PROFESSIONAL role can create checkout sessions.
+        
+        **Security:**
+        - userId extracted from JWT (server-side, tamper-proof)
+        - Stripe Price IDs resolved server-side from env (client cannot manipulate)
+        - referral_code validated server-side (prevents self-referral)
+        - Stripe Customer metadata origo_user_id set for webhook processing
+        - success/cancel URLs constructed server-side from FRONTEND_URL env
+        
+        **Business Rules:**
+        - 14 day trial included in subscription
+        - referral_code applies 100% off first month via Stripe coupon
+        - Referral attribution recorded in DB before checkout session created
+        - Available plans: start, pro, clinic
+        - Billing cycles: monthly, annual
+        
+        **Frontend Flow:**
+        1. POST /api/v1/checkout/session with plan + billing_cycle + optional referral_code
+        2. Receive checkout_url in response
+        3. Redirect user to checkout_url (Stripe Checkout page)
+        4. User completes payment on Stripe
+        5. Stripe redirects to success_url with session_id
+      operationId: createCheckoutSession
+      tags:
+        - Checkout
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCheckoutSessionRequest'
+      responses:
+        '200':
+          description: Checkout session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateCheckoutSessionResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Token de autenticação válido é obrigatório
+        '403':
+          description: Forbidden (non-PROFESSIONAL user)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Forbidden
+                message: Apenas usuários PROFESSIONAL podem criar sessões de checkout
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid_plan:
+                  summary: Invalid plan
+                  value:
+                    error: Validation Error
+                    message: Plano inválido ou não configurado
+                invalid_referral:
+                  summary: Invalid referral code
+                  value:
+                    error: Validation Error
+                    message: Código de indicação inválido
+                self_referral:
+                  summary: Self-referral attempt
+                  value:
+                    error: Validation Error
+                    message: Você não pode usar seu próprio código de indicação
+                already_referred:
+                  summary: User already referred
+                  value:
+                    error: Validation Error
+                    message: Você já foi indicado por outro usuário
+        '429':
+          description: Rate limit excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Stripe integration not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Service Unavailable
+                message: Serviço de pagamento não disponível
+
   /api/v1/webhooks/stripe:
     post:
       summary: Stripe webhook handler
@@ -959,6 +1072,44 @@ components:
       required:
         - valid
 
+    CreateCheckoutSessionRequest:
+      type: object
+      properties:
+        plan:
+          type: string
+          description: Plan ID (start, pro, or clinic)
+          enum: [start, pro, clinic]
+          example: pro
+        billing_cycle:
+          type: string
+          description: Billing cycle (monthly or annual)
+          enum: [monthly, annual]
+          example: monthly
+        referral_code:
+          type: string
+          description: Optional referral code for 1 month free discount
+          example: XYZA1234
+          minLength: 1
+          maxLength: 50
+      required:
+        - plan
+        - billing_cycle
+
+    CreateCheckoutSessionResponse:
+      type: object
+      properties:
+        checkout_url:
+          type: string
+          description: Stripe Checkout Session URL to redirect user to
+          example: https://checkout.stripe.com/c/pay/cs_test_...
+        session_id:
+          type: string
+          description: Stripe Checkout Session ID
+          example: cs_test_abc123...
+      required:
+        - checkout_url
+        - session_id
+
   securitySchemes:
     BearerAuth:
       type: http
@@ -987,3 +1138,5 @@ tags:
     description: Legal V2 acceptance tracking (privacy, terms, payments notices)
   - name: Referrals
     description: Referral MVP (codes, validation, status, payouts)
+  - name: Checkout
+    description: Stripe Checkout Session creation for subscriptions
