@@ -6,6 +6,7 @@ import { authRoutes } from './routes/auth';
 import { legalRoutes, REQUIRED_DOCS_ALL_USERS, REQUIRED_DOCS_PROFESSIONAL } from './routes/legal';
 import { referralRoutes } from './routes/referrals';
 import { stripeWebhookRoutes } from './routes/stripe-webhook';
+import { checkoutRoutes } from './routes/checkout';
 import { verifyAccessToken } from './lib/jwt';
 
 const prisma = new PrismaClient({
@@ -106,6 +107,9 @@ async function start() {
             status: 'GET /api/v1/referrals/status',
             validate: 'POST /api/v1/referrals/validate',
           },
+          checkout: {
+            session: 'POST /api/v1/checkout/session',
+          },
           webhooks: {
             stripe: 'POST /api/v1/webhooks/stripe',
           },
@@ -121,6 +125,9 @@ async function start() {
 
     // Register referral routes (Referral MVP)
     await server.register(referralRoutes);
+
+    // Register checkout routes (Checkout Session P0)
+    await server.register(checkoutRoutes);
 
     // Register Stripe webhook routes (Referral MVP payouts)
     await server.register(stripeWebhookRoutes);
