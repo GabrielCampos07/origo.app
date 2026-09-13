@@ -183,10 +183,34 @@ export default function CheckoutPage() {
     const result = await createCheckoutSession(requestBody);
     
     if (result.ok) {
-      // SEC: Redirect to checkout_url from our trusted backend
-      // (not an open redirect - we trust our API response)
-      window.location.assign(result.data.checkout_url);
-      return;
+      // P2 SEC (FRONTEND SECURITY CHECKER): Validate checkout_url before redirect
+      // Even though we trust our backend, validate URL structure as defense-in-depth
+      try {
+        const url = new URL(result.data.checkout_url);
+        
+        // Require HTTPS
+        if (url.protocol !== "https:") {
+          throw new Error("Invalid protocol");
+        }
+        
+        // Require checkout.stripe.com or *.stripe.com
+        const hostname = url.hostname.toLowerCase();
+        const isValidStripeHost = 
+          hostname === "checkout.stripe.com" ||
+          hostname.endsWith(".stripe.com");
+        
+        if (!isValidStripeHost) {
+          throw new Error("Invalid hostname");
+        }
+        
+        // URL validated - safe to redirect
+        window.location.assign(result.data.checkout_url);
+        return;
+      } catch {
+        setCheckoutLoading(false);
+        setCheckoutError("URL de checkout inválida. Contate o suporte.");
+        return;
+      }
     }
     
     setCheckoutLoading(false);
