@@ -2,12 +2,41 @@
 
 :root {
   color-scheme: light;
+  
+  /* beOrigo Brand Colors */
+  --color-green-50: #f5f5f0;
+  --color-green-100: #e5f0e8;
+  --color-green-200: #d1e5d9;
+  --color-green-300: #c7dbcc;
+  --color-green-400: #a8c4b3;
+  --color-green-600: #7da890;
+  --color-green-700: #598c6b;
+  --brand-primary: #598c6b;
+  
+  --color-cream: #f0f5ed;
+  
+  --color-ink-900: #2e3833;
+  --color-ink-800: #3d4740;
+  --color-ink-700: #4c554d;
+  --color-ink-600: #66736b;
+  --color-ink-500: #7f8a82;
+  --fg-primary: #2e3833;
+  --fg-on-primary: white;
+  
+  --color-white: white;
+  --bg-surface: white;
+  --border-default: #d8ddd4;
+  
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 20px;
 }
 
 body {
   margin: 0;
   min-height: 100dvh;
   font-family:
+    'Inter',
     ui-sans-serif,
     system-ui,
     -apple-system,
@@ -18,4 +47,6 @@ body {
     Arial,
     sans-serif;
   -webkit-font-smoothing: antialiased;
+  background: var(--color-green-50);
+  color: var(--fg-primary);
 }
