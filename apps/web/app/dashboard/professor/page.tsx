@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAccessToken, getStoredUser, clearAuthSession } from "@/lib/auth-storage";
+import { getAccessToken, getStoredUser, clearAuthSession, getMissingDocVersions } from "@/lib/auth-storage";
 
 export default function ProfessorDashboardPage() {
   const router = useRouter();
@@ -15,12 +15,26 @@ export default function ProfessorDashboardPage() {
       router.push("/login");
       return;
     }
+
+    // Check for missing docs - redirect to legal accept if any
+    const missingDocs = getMissingDocVersions();
+    if (missingDocs && missingDocs.length > 0) {
+      router.push("/legal/accept");
+      return;
+    }
+
     const storedUser = getStoredUser();
     if (!storedUser) {
       router.push("/login");
       return;
     }
-    // Note: Not enforcing role check here as per "thin shell" requirement
+
+    // Role mismatch: redirect to correct dashboard
+    if (storedUser.role === "STUDENT") {
+      router.push("/dashboard/aluno");
+      return;
+    }
+
     setUser(storedUser);
     setLoading(false);
   }, [router]);

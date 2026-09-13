@@ -57,7 +57,19 @@ export default function LegalAcceptPage() {
     setError(null);
     setSubmitting(true);
 
-    const result = await acceptLegalDocuments(token, missingDocs);
+    // P2 Security: Only POST document IDs that exist in LEGAL_DOC_MAP (whitelist)
+    const validatedDocs = missingDocs.filter((docId) => {
+      const docInfo = getDocInfo(docId);
+      return docInfo.url !== "#"; // Only submit docs with valid URLs
+    });
+
+    if (validatedDocs.length === 0) {
+      setError("Nenhum documento válido para aceitar.");
+      setSubmitting(false);
+      return;
+    }
+
+    const result = await acceptLegalDocuments(token, validatedDocs);
     setSubmitting(false);
 
     if (result.ok) {

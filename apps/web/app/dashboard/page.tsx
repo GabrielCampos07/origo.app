@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAccessToken, getStoredUser } from "../../lib/auth-storage";
+import { getAccessToken, getStoredUser, getMissingDocVersions } from "../../lib/auth-storage";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -15,6 +15,14 @@ export default function DashboardPage() {
       router.push("/login");
       return;
     }
+
+    // Check for missing docs - redirect to legal accept if any
+    const missingDocs = getMissingDocVersions();
+    if (missingDocs && missingDocs.length > 0) {
+      router.push("/legal/accept");
+      return;
+    }
+
     const storedUser = getStoredUser();
     
     // Redirect to role-specific dashboard if role is available
