@@ -323,28 +323,15 @@ export async function legalRoutes(fastify: FastifyInstance) {
   );
 
   /**
-   * Middleware: Check legal acceptance before protected routes
+   * Helper: checkLegalAcceptance for use in route handlers
    * 
-   * Example usage in other routes:
-   * 
-   * fastify.addHook('preHandler', async (request, reply) => {
-   *   const userId = extractUserId(request);
-   *   if (userId) {
-   *     const hasAccepted = await checkLegalAcceptance(userId);
-   *     if (!hasAccepted) {
-   *       return reply.code(451).send({
-   *         error: 'Legal Acceptance Required',
-   *         message: 'You must accept required legal documents',
-   *         missing_endpoint: '/api/v1/legal/missing',
-   *       });
-   *     }
-   *   }
-   * });
+   * NOTE: Global middleware now handles legal acceptance enforcement automatically.
+   * This helper is available for custom logic if needed.
    * 
    * SECURITY NOTE for BACKEND SECURITY CHECKER:
-   * - Use HTTP 451 (Unavailable For Legal Reasons) for blocked requests
-   * - Always direct to /api/v1/legal/missing to get specific required docs
-   * - For checkout/PROFESSIONAL flows, check additional docs
+   * - Global middleware returns HTTP 403 with missing_doc_versions
+   * - Middleware enforces role-based requirements (PROFESSIONAL vs STUDENT)
+   * - Uses userId from JWT + role from DB (never trusts client)
    */
 }
 

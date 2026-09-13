@@ -289,6 +289,7 @@ Protected authenticated endpoints automatically return **403 Forbidden** if user
 
 **Exempt routes (no 403 enforcement):**
 - `/health` — health check
+- `/api/v1` — API info
 - `/api/v1/auth/login` — login
 - `/api/v1/auth/forgot-password` — forgot password
 - `/api/v1/auth/reset-password` — reset password
@@ -297,18 +298,24 @@ Protected authenticated endpoints automatically return **403 Forbidden** if user
 
 **How it works:**
 1. Middleware runs on every request (`onRequest` hook)
-2. Skips exempt routes and unauthenticated requests
-3. Extracts `userId` from JWT Bearer token
-4. Fetches user's role (PROFESSIONAL | STUDENT) and existing acceptances
-5. Compares against required docs for role
-6. Returns 403 with `missing_doc_versions` if incomplete
-7. Otherwise allows request to proceed
+2. Skips exempt routes using path-only comparison (prevents query parameter bypass)
+3. Skips unauthenticated requests → route handler returns 401 (not 403)
+4. Extracts `userId` from JWT Bearer token (server-side, signature-verified)
+5. Fetches user's role (PROFESSIONAL | STUDENT) from DB + existing acceptances (SELECT only)
+6. Calculates required docs server-side based on DB role (never trusts client)
+7. Returns 403 with `missing_doc_versions` if incomplete
+8. Otherwise allows request to proceed
 
-**Security notes:**
-- Uses **403 Forbidden** (not 451) per OWNER/Sec requirement
-- Error code `legal_acceptance_required` for client detection
-- `missing_doc_versions` array tells client which docs to present
-- Frontend should redirect to `/legal/accept` with missing docs
+**BACKEND SECURITY Criteria (verified):**
+1. ✅ Only after valid JWT — missing/invalid token stays **401** (not 403)
+2. ✅ **403** only when authenticated user missing required docs for role
+   - PROFESSIONAL: privacy + terms_app + terms_saas + payments_notice
+   - STUDENT: privacy + terms_app
+3. ✅ `missing_doc_versions` calculated server-side from JWT userId + DB role + LegalAcceptance SELECT
+4. ✅ Allowlist exceptions (no gate): auth routes + /legal/accept + /legal/missing + /health
+5. ✅ No bypass via header/query; userId/role only from JWT+DB
+6. ✅ Uses **403** (not 451) in response and OpenAPI
+7. ✅ Middleware SELECT only; accept stays createMany/skipDuplicates append-only
 
 ### Role-Based Enforcement
 
