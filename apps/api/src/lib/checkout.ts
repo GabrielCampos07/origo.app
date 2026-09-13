@@ -160,10 +160,33 @@ export async function createCheckoutSession(
     referralCodeId = referralCodeRecord.id;
   }
 
-  // Create Stripe checkout session
+  // SECURITY FIX: Create or retrieve Stripe Customer with origo_user_id metadata BEFORE session
+  // Webhook reads customer.metadata.origo_user_id - must be set on Customer, not just session/subscription
+  // Search for existing customer by email or create new one
+  let customer: Stripe.Customer;
+  const existingCustomers = await stripe.customers.list({ email, limit: 1 });
+  
+  if (existingCustomers.data.length > 0) {
+    // Customer exists - update metadata to ensure origo_user_id is set
+    customer = await stripe.customers.update(existingCustomers.data[0].id, {
+      metadata: {
+        origo_user_id: userId,
+      },
+    });
+  } else {
+    // Create new customer with metadata
+    customer = await stripe.customers.create({
+      email,
+      metadata: {
+        origo_user_id: userId,
+      },
+    });
+  }
+
+  // Create Stripe checkout session with existing customer
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: 'subscription',
-    customer_email: email,
+    customer: customer.id, // SECURITY: Use pre-created customer with metadata
     line_items: [
       {
         price: priceId,
@@ -189,16 +212,6 @@ export async function createCheckoutSession(
         coupon: stripeCouponId,
       },
     ];
-  }
-
-  // Link customer to Origo user for webhook processing
-  // SECURITY: Store origo_user_id in customer metadata for invoice.paid webhook
-  sessionParams.customer_creation = 'always';
-  if (sessionParams.subscription_data) {
-    sessionParams.subscription_data.metadata = {
-      ...sessionParams.subscription_data.metadata,
-      origo_user_id: userId,
-    };
   }
 
   const session = await stripe.checkout.sessions.create(sessionParams);

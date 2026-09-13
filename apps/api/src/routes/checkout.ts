@@ -13,7 +13,9 @@ const prisma = new PrismaClient();
  * - userId ONLY from JWT; never accept userId/customer from client (IDOR protection)
  * - Stripe Price IDs resolved server-side from env (never sent to client)
  * - referral_code validated server-side via existing checkout helper
- * - Stripe Customer metadata origo_user_id set for invoice.paid webhook
+ * - Stripe Customer created/updated with metadata.origo_user_id BEFORE checkout session
+ * - Customer ID passed to session (not customer_creation: 'always' alone)
+ * - Ensures invoice.paid webhook can read customer.metadata.origo_user_id
  * - Legal 403 middleware already enforced by index.ts (PROFESSIONAL docs required)
  * - No Stripe secret keys exposed to client
  * - success/cancel URLs use FRONTEND_URL env (tamper-proof)
@@ -105,7 +107,8 @@ export async function checkoutRoutes(fastify: FastifyInstance) {
    * - userId extracted from JWT (server-side verification)
    * - Price IDs resolved server-side from env (client cannot manipulate)
    * - referral_code validated server-side via checkout helper
-   * - Stripe Customer metadata origo_user_id set for webhook
+   * - Stripe Customer created/updated with metadata.origo_user_id BEFORE session
+   * - Customer ID passed to session (ensures webhook reads customer.metadata)
    * - success/cancel URLs constructed server-side from FRONTEND_URL env
    * 
    * BUSINESS RULES:
