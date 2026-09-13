@@ -335,8 +335,201 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/v1/legal/accept:
+    post:
+      summary: Record legal document acceptances
+      description: |
+        Records user acceptance of one or more legal documents (privacy, terms, payments).
+        
+        **Required docVersions (all users):**
+        - `privacy_v2_2026-09-13` (Privacy Policy V2)
+        - `terms_app_v2_2026-09-13` (App Terms V2)
+        
+        **Additional required docVersions (PROFESSIONAL users / checkout gate):**
+        - `terms_saas_v2_2026-09-13` (SaaS Terms V2)
+        - `payments_notice_v2_2026-09-13` (Payments Notice V2)
+        
+        **Security:**
+        - userId extracted from JWT (server-side, tamper-proof)
+        - acceptedAt timestamp is server-controlled
+        - Batch upsert: idempotent, can re-accept same docs
+        - Only whitelisted docVersions accepted
+      operationId: recordLegalAcceptance
+      tags:
+        - Legal
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LegalAcceptanceRequest'
+      responses:
+        '200':
+          description: Acceptances recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalAcceptanceResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Valid authentication token required
+        '422':
+          description: Invalid docVersions or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalAcceptanceError'
+              example:
+                error: Validation Error
+                message: Invalid docVersions provided
+                invalid_versions: ["health_consent_unknown"]
+        '429':
+          description: Rate limit excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/legal/missing:
+    get:
+      summary: Get missing required legal documents
+      description: |
+        Returns which required legal documents the authenticated user has NOT yet accepted.
+        
+        **Use cases:**
+        - Login flow: check if user needs to accept docs before full access
+        - Before showing legal screens: know which docs to present
+        - Checkout gate: verify PROFESSIONAL users have accepted all required docs
+        
+        **Role-based requirements:**
+        - STANDARD users: privacy + terms_app
+        - PROFESSIONAL users: privacy + terms_app + terms_saas + payments_notice
+      operationId: getMissingLegalDocs
+      tags:
+        - Legal
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of missing required documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalMissingDocsResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+
+    LegalAcceptanceResponse:
+      type: object
+      properties:
+        accepted:
+          type: array
+          items:
+            type: string
+          description: List of docVersions that were accepted
+          example: ["privacy_v2_2026-09-13", "terms_app_v2_2026-09-13"]
+        acceptedAt:
+          type: string
+          format: date-time
+          description: Server timestamp when acceptance was recorded
+      required:
+        - accepted
+        - acceptedAt
+
+    LegalAcceptanceRequest:
+      type: object
+      properties:
+        docVersions:
+          type: array
+          items:
+            type: string
+          description: List of document versions to accept
+          example: ["privacy_v2_2026-09-13", "terms_app_v2_2026-09-13"]
+          minItems: 1
+      required:
+        - docVersions
+
+    LegalMissingDocsResponse:
+      type: object
+      properties:
+        missing_docs:
+          type: array
+          items:
+            type: string
+          description: List of required docVersions not yet accepted by user
+          example: ["privacy_v2_2026-09-13", "terms_app_v2_2026-09-13"]
+        user_role:
+          type: string
+          enum: [STANDARD, PROFESSIONAL]
+          description: User role determines which docs are required
+          example: STANDARD
+      required:
+        - missing_docs
+
+    LegalAcceptanceError:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        invalid_versions:
+          type: array
+          items:
+            type: string
+          description: Invalid docVersions that were rejected
+      required:
+        - error
+        - message
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token from /api/v1/auth/login
+
 tags:
   - name: Infrastructure
     description: Endpoints de infraestrutura (health, info)
   - name: Auth
     description: Autenticação (login, forgot-password, reset-password)
+  - name: Legal
+    description: Legal V2 acceptance tracking (privacy, terms, payments notices)
