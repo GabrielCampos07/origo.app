@@ -1,29 +1,6 @@
-<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="12" height="12" fill="#F5F5F5"/>
-<g id="Home &#194;&#183; Desktop 1440">
-<rect width="1440" height="6210" transform="translate(-739 -6190)" fill="#F5F5F0"/>
-<g id="Footer" clip-path="url(#clip0_65_2)">
-<rect width="1440" height="109" transform="translate(-739 -89)" fill="#2E3833"/>
-<g id="Social">
-<g id="Icons row">
-<g id="IC-SOC-02">
-<g id="IC-SOC-02 &#194;&#183; 24&#195;&#151;24">
-<rect x="-6" y="-6" width="24" height="24" rx="6" fill="#EEEEE8"/>
-<g id="IC-SOC-02 &#194;&#183; svg">
-<path id="Vector" d="M8 2.25H4C3.0335 2.25 2.25 3.0335 2.25 4V8C2.25 8.9665 3.0335 9.75 4 9.75H8C8.9665 9.75 9.75 8.9665 9.75 8V4C9.75 3.0335 8.9665 2.25 8 2.25Z" stroke="#598C6B" stroke-width="0.875" stroke-linejoin="round"/>
-<path id="Vector_2" d="M4.15 4.5998C4.43995 4.5998 4.675 4.36475 4.675 4.0748C4.675 3.78486 4.43995 3.5498 4.15 3.5498C3.86005 3.5498 3.625 3.78486 3.625 4.0748C3.625 4.36475 3.86005 4.5998 4.15 4.5998Z" fill="#598C6B"/>
-<path id="Vector_3" d="M4.15002 5.2998V8.0748" stroke="#598C6B" stroke-width="0.875" stroke-linecap="round"/>
-<path id="Vector_4" d="M5.75 8.075V6.05C5.75 5.425 6.2 5.125 6.775 5.125C7.425 5.125 7.775 5.55 7.775 6.25V8.075" stroke="#598C6B" stroke-width="0.875" stroke-linecap="round" stroke-linejoin="round"/>
-</g>
-</g>
-</g>
-</g>
-</g>
-</g>
-</g>
-<defs>
-<clipPath id="clip0_65_2">
-<rect width="1440" height="109" fill="white" transform="translate(-739 -89)"/>
-</clipPath>
-</defs>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4.5" y="4.5" width="15" height="15" rx="4.5" stroke="#598c6b" stroke-width="1.75" stroke-linejoin="round"/>
+  <path d="M8.25 10.25V15.5" stroke="#598c6b" stroke-width="1.75" stroke-linecap="round"/>
+  <circle cx="8.25" cy="8" r="1.05" fill="#598c6b"/>
+  <path d="M11.5 15.5V12.15C11.5 11.05 12.2 10.35 13.25 10.35C14.4 10.35 15 11.1 15 12.4V15.5" stroke="#598c6b" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
