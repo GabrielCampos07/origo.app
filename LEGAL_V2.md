@@ -11,17 +11,6 @@
 
 Legal V2 persistence tracks user acceptance of required legal documents with timestamps. The API gates sensitive flows until users accept required documents based on their role.
 
-## Known Dependencies
-
-### User Role Field (TODO)
-
-The `User` model currently does NOT have a `role` or `subscriptionTier` field. This limits Legal V2's ability to enforce PROFESSIONAL-specific documents (SaaS terms + payment notices) at the checkout gate.
-
-**Current behavior:**
-- Login returns `missing_doc_versions` for base required docs only (privacy + terms_app)
-- `/api/v1/legal/missing` endpoint hardcodes `userRole = 'STANDARD'`
-- PROFESSIONAL doc enforcement is **not active** until User.role is added
-
 **What's needed:**
 1. Add `role` enum field to `User` Prisma model: `STANDARD | PROFESSIONAL`
 2. Update login to check `user.role` when calculating `missing_doc_versions`

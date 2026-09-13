@@ -34,9 +34,14 @@ components:
         email:
           type: string
           format: email
+        role:
+          type: string
+          enum: [PROFESSIONAL, STUDENT]
+          description: User role from User.role enum
       required:
         - id
         - email
+        - role
 
     LoginRequest:
       type: object
@@ -76,9 +81,11 @@ components:
             - privacy_v2_2026-09-13 → /privacidade
             - terms_app_v2_2026-09-13 → /termos
             
-            Checkout gate (PROFESSIONAL additional):
+            Checkout gate (PROFESSIONAL role additional):
             - terms_saas_v2_2026-09-13 → /termos-saas
             - payments_notice_v2_2026-09-13 → /aviso-pagamentos
+            
+            STUDENT role: only base docs required (privacy + terms_app)
             
             Base URL (dev): http://localhost:3456
           example: ["privacy_v2_2026-09-13", "terms_app_v2_2026-09-13"]
@@ -382,7 +389,7 @@ paths:
         **Security:**
         - userId extracted from JWT (server-side, tamper-proof)
         - acceptedAt timestamp is server-controlled
-        - Batch upsert: idempotent, can re-accept same docs
+        - INSERT ONLY: re-accepting same docs = 200 no-op (keeps original acceptedAt)
         - Only whitelisted docVersions accepted
       operationId: recordLegalAcceptance
       tags:
@@ -533,9 +540,9 @@ components:
           example: ["privacy_v2_2026-09-13", "terms_app_v2_2026-09-13"]
         user_role:
           type: string
-          enum: [STANDARD, PROFESSIONAL]
-          description: User role determines which docs are required
-          example: STANDARD
+          enum: [PROFESSIONAL, STUDENT]
+          description: User role (PROFESSIONAL needs extra docs for checkout)
+          example: STUDENT
       required:
         - missing_docs
 

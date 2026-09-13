@@ -67,8 +67,8 @@ export const FOOTER_ONLY_DOCS = [
  * 
  * APPEND-ONLY Model (LGPD compliance):
  * - LegalAcceptance is APPEND-ONLY — no update/delete endpoints exposed
- * - Upsert on re-acceptance updates ONLY acceptedAt timestamp (audit trail)
- * - Never update userId or docVersion after creation
+ * - INSERT ONLY: re-acceptance is a no-op (keeps original acceptedAt unchanged)
+ * - Never update acceptedAt, userId, or docVersion after record creation
  * - Individual records never deleted (only cascade on User delete)
  * - Database role: GRANT INSERT + SELECT only (NO UPDATE/DELETE for app)
  * 
@@ -148,7 +148,8 @@ export async function legalRoutes(fastify: FastifyInstance) {
    * 
    * APPEND-ONLY Security (BACKEND SECURITY CHECKER):
    * - LegalAcceptance is APPEND-ONLY: no delete endpoint, no arbitrary updates
-   * - Upsert updates ONLY acceptedAt on re-acceptance (audit trail)
+   * - INSERT ONLY: re-accepting same docVersion = 200 no-op (keeps original acceptedAt)
+   * - NEVER updates acceptedAt or any field on re-acceptance
    * - userId/docVersion NEVER modified after creation
    * - Database: app role has INSERT + SELECT only (NO UPDATE/DELETE grants)
    * 
@@ -202,28 +203,33 @@ export async function legalRoutes(fastify: FastifyInstance) {
       try {
         const acceptedAt = new Date();
 
-        // Batch upsert acceptances (unique constraint on userId + docVersion)
-        const acceptances = await Promise.all(
-          docVersions.map(docVersion =>
-            prisma.legalAcceptance.upsert({
-              where: {
-                userId_docVersion: {
-                  userId,
-                  docVersion,
-                },
-              },
-              create: {
-                userId,
-                docVersion,
-                acceptedAt,
-              },
-              update: {
-                acceptedAt, // Update timestamp if re-accepting
-              },
-            })
-          )
-        );
+        // APPEND-ONLY: Insert only if not already accepted (no update on re-acceptance)
+        // Fetch existing acceptances first
+        const existing = await prisma.legalAcceptance.findMany({
+          where: {
+            userId,
+            docVersion: { in: docVersions },
+          },
+          select: { docVersion: true },
+        });
 
+        const existingSet = new Set(existing.map(a => a.docVersion));
+        const newDocVersions = docVersions.filter(v => !existingSet.has(v));
+
+        // Insert only new acceptances (skip duplicates = no-op)
+        if (newDocVersions.length > 0) {
+          await prisma.legalAcceptance.createMany({
+            data: newDocVersions.map(docVersion => ({
+              userId,
+              docVersion,
+              acceptedAt,
+            })),
+            skipDuplicates: true, // Safety: skip if unique constraint violated
+          });
+        }
+
+        // Return all requested docVersions as accepted (idempotent 200)
+        // Re-accepting keeps original acceptedAt unchanged
         return reply.code(200).send({
           accepted: docVersions,
           acceptedAt: acceptedAt.toISOString(),
@@ -278,10 +284,8 @@ export async function legalRoutes(fastify: FastifyInstance) {
           });
         }
 
-        // Determine required docs based on user role
-        // TODO: Replace with actual role field check when User model has role/subscriptionTier
-        // Placeholder: hardcoded to STANDARD for now (will be user.role or similar)
-        const userRole = (user as any).role || 'STANDARD'; // Type-safe placeholder
+        // Determine required docs based on user role (from User.role enum)
+        const userRole = user.role; // PROFESSIONAL | STUDENT
         const requiredDocs = [
           ...REQUIRED_DOCS_ALL_USERS,
           ...(userRole === 'PROFESSIONAL' ? REQUIRED_DOCS_PROFESSIONAL : []),
@@ -344,7 +348,7 @@ export async function legalRoutes(fastify: FastifyInstance) {
  */
 export async function checkLegalAcceptance(
   userId: string,
-  role: 'STANDARD' | 'PROFESSIONAL' = 'STANDARD'
+  role: 'PROFESSIONAL' | 'STUDENT' = 'STUDENT'
 ): Promise<boolean> {
   const requiredDocs = [
     ...REQUIRED_DOCS_ALL_USERS,

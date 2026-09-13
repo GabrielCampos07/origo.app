@@ -181,13 +181,14 @@ export async function authRoutes(fastify: FastifyInstance) {
         });
 
         // Calculate missing legal documents (Legal V2)
-        // TODO: When User.role field is available, check PROFESSIONAL role for additional docs
-        // For now, only check base required docs (privacy + terms_app)
+        // User.role determines which docs are required
         const acceptedDocVersions = new Set(
           user.legalAcceptances.map(a => a.docVersion)
         );
-        const requiredDocs = [...REQUIRED_DOCS_ALL_USERS];
-        // When User.role exists: if (user.role === 'PROFESSIONAL') requiredDocs.push(...REQUIRED_DOCS_PROFESSIONAL);
+        const requiredDocs = [
+          ...REQUIRED_DOCS_ALL_USERS,
+          ...(user.role === 'PROFESSIONAL' ? REQUIRED_DOCS_PROFESSIONAL : []),
+        ];
         const missingDocVersions = requiredDocs.filter(
           doc => !acceptedDocVersions.has(doc)
         );
@@ -198,6 +199,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           user: {
             id: user.id,
             email: user.email,
+            role: user.role, // PROFESSIONAL | STUDENT
           },
           missing_doc_versions: missingDocVersions,
         });
