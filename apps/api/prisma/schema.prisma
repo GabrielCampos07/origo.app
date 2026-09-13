@@ -74,9 +74,13 @@ model RefreshToken {
 // RETENTION: TBD - coordinate with legal/compliance team for retention policy
 // ACCESS CONTROL: API database role should have INSERT + SELECT only (no UPDATE/DELETE)
 // 
+// DOC VERSION FORMAT (SoT aligned with Front/OWNER):
+//   Examples: privacy_v2_2026-09-13, terms_app_v2_2026-09-13,
+//             terms_saas_v2_2026-09-13, payments_notice_v2_2026-09-13
+// 
 // GATE LOGIC (enforced in API, stored generically here):
-//   - All users: privacy@YYYY-MM-DD, terms_app@YYYY-MM-DD
-//   - PROFESSIONAL/Checkout: also terms_saas@YYYY-MM-DD, payments_notice@YYYY-MM-DD
+//   - All users: privacy_v2_*, terms_app_v2_*
+//   - PROFESSIONAL/Checkout: also terms_saas_v2_*, payments_notice_v2_*
 model LegalAcceptance {
   id         String   @id @default(cuid())
   userId     String
