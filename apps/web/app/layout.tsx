@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Origo — Autenticação",
-  description: "Login e redefinição de senha Origo",
+  title: "beOrigo — Continuidade entre consultas",
+  description: "Prescrição clara. Adesão visível. Continuidade entre consultas. HEP 1:1 para fisioterapeutas e personal trainers.",
 };
 
 export default function RootLayout({
