@@ -145,18 +145,13 @@ export default function CheckoutPage() {
   };
 
   const handleCheckout = async () => {
-    // TODO: Call backend to create Stripe checkout session
-    // POST /api/v1/checkout/session with:
+    // Backend checkout session endpoint not yet implemented
+    // When ready, POST to /api/v1/checkout/session with:
     // { plan: selectedPlan, billing_cycle: billingCycle, referral_code?: referralCode }
     // Backend returns Stripe session URL → redirect
     
-    console.log("TODO: Create checkout session", {
-      plan: selectedPlan,
-      billing_cycle: billingCycle,
-      referral_code: couponValidation?.valid ? referralCode : undefined,
-    });
-    
-    alert("Checkout em desenvolvimento. Backend integrará Stripe checkout session.");
+    // For now, show clear message that checkout is coming soon
+    return;
   };
 
   if (loading) {
@@ -401,9 +396,10 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={handleCheckout}
-                className="w-full mt-4 py-3.5 rounded-xl bg-[var(--brand-primary)] text-white font-semibold hover:bg-[#7da890] transition-colors"
+                disabled
+                className="w-full mt-4 py-3.5 rounded-xl bg-[#c7dbcc] text-[var(--color-ink-600)] font-semibold cursor-not-allowed transition-colors"
               >
-                {plan.cta}
+                Pagamento em breve
               </button>
               
               <p className="text-xs text-[var(--color-ink-500)] mt-4 text-center leading-relaxed">

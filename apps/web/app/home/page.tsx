@@ -747,7 +747,7 @@ export default function HomePage() {
         <div className="relative z-10 mt-12 bg-gradient-to-br from-[#e5f0e8] to-[#f0f5ed] border-2 border-[var(--brand-primary)]/40 rounded-2xl p-8 md:p-10 max-w-4xl mx-auto overflow-hidden">
           <div className="absolute -right-8 -bottom-8 w-48 h-48 md:w-64 md:h-64 opacity-40">
             <Image
-              src="/assets/referral-illustration-1.svg"
+              src="/assets/referral-illustration-1.png"
               alt=""
               fill
               className="object-contain"

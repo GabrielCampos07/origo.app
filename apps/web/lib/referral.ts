@@ -42,8 +42,6 @@ export type CouponValidation = {
   referrer_email_prefix?: string;
 };
 
-// TODO: Backend endpoints — stub responses until OpenAPI ships
-// When backend returns 404, UI shows empty/disabled state with clear messaging
 
 /**
  * GET /api/v1/referrals/code
@@ -51,22 +49,7 @@ export type CouponValidation = {
  * PROFESSIONAL only.
  */
 export async function getReferralCode(): Promise<ApiResult<ReferralCode>> {
-  const result = await apiGet<ReferralCode>("/api/v1/referrals/code");
-  
-  // DEMO stub: if 404, return placeholder for UI review
-  if (!result.ok && result.status === 404) {
-    console.warn("[DEMO STUB] Referral code endpoint not ready; using placeholder");
-    return {
-      ok: true,
-      data: {
-        code: "DEMO-" + Math.random().toString(36).substring(2, 10).toUpperCase(),
-        created_at: new Date().toISOString(),
-        is_active: true,
-      },
-    };
-  }
-  
-  return result;
+  return apiGet<ReferralCode>("/api/v1/referrals/code");
 }
 
 /**
@@ -84,24 +67,7 @@ export async function regenerateReferralCode(): Promise<ApiResult<ReferralCode>>
  * PROFESSIONAL only.
  */
 export async function getReferralStatus(): Promise<ApiResult<ReferralStatus>> {
-  const result = await apiGet<ReferralStatus>("/api/v1/referrals/status");
-  
-  // DEMO stub: if 404, return empty state for UI review
-  if (!result.ok && result.status === 404) {
-    console.warn("[DEMO STUB] Referral status endpoint not ready; using empty state");
-    return {
-      ok: true,
-      data: {
-        total_referred: 0,
-        active_subscribers: 0,
-        pending_payout: 0,
-        total_earned: 0,
-        referred_users: [],
-      },
-    };
-  }
-  
-  return result;
+  return apiGet<ReferralStatus>("/api/v1/referrals/status");
 }
 
 /**
@@ -114,25 +80,9 @@ export async function getReferralStatus(): Promise<ApiResult<ReferralStatus>> {
 export async function validateReferralCode(
   code: string
 ): Promise<ApiResult<CouponValidation>> {
-  const result = await apiPostAuth<CouponValidation>("/api/v1/referrals/validate", {
+  return apiPostAuth<CouponValidation>("/api/v1/referrals/validate", {
     code: code.trim().toUpperCase(),
   });
-  
-  // DEMO stub: if 404, accept any non-empty code for UI review
-  if (!result.ok && result.status === 404) {
-    console.warn("[DEMO STUB] Referral validate endpoint not ready; accepting placeholder");
-    const valid = code.trim().length >= 4;
-    return {
-      ok: true,
-      data: {
-        valid,
-        discount_description: valid ? "1 mês grátis" : undefined,
-        referrer_email_prefix: valid ? "j***@example.com" : undefined,
-      },
-    };
-  }
-  
-  return result;
 }
 
 /**
