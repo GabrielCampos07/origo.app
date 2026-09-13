@@ -71,7 +71,8 @@ async function isProfessionalUser(userId: string): Promise<boolean> {
 }
 
 interface ValidateReferralCodeBody {
-  code: string;
+  code?: string;
+  referral_code?: string;
 }
 
 interface ValidateReferralCodeResponse {
@@ -295,7 +296,7 @@ export async function referralRoutes(fastify: FastifyInstance) {
 
   /**
    * POST /api/v1/referrals/validate
-   * Body: { code: string }
+   * Body: { code: string } OR { referral_code: string }
    * 
    * Validates a referral code without leaking PII.
    * Public endpoint (no auth required) OR authenticated.
@@ -306,19 +307,24 @@ export async function referralRoutes(fastify: FastifyInstance) {
    * - Case-insensitive code lookup (citext in DB)
    * - Does NOT reveal if code is inactive/expired (schema has no expiry yet)
    * 
+   * FRONTEND ALIGNMENT:
+   * - Accepts both "code" (primary) and "referral_code" (alias) in request body
+   * - OpenAPI documents "code" as primary field
+   * 
    * Returns: { valid: true/false, referrer_hint?: string }
    * Errors: 422 validation
    */
   fastify.post<{ Body: ValidateReferralCodeBody }>(
     '/api/v1/referrals/validate',
     async (request: FastifyRequest<{ Body: ValidateReferralCodeBody }>, reply: FastifyReply) => {
-      const { code } = request.body;
+      // FRONTEND ALIGNMENT: Accept both "code" and "referral_code" (alias)
+      const code = request.body.code || request.body.referral_code;
 
       // Validation
       if (!code || typeof code !== 'string') {
         return reply.code(422).send({
           error: 'Validation Error',
-          message: 'code is required and must be a string',
+          message: 'code or referral_code is required and must be a string',
         });
       }
 

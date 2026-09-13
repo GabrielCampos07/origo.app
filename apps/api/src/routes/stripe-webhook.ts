@@ -72,7 +72,7 @@ export async function stripeWebhookRoutes(fastify: FastifyInstance) {
    * 
    * BACKEND SECURITY:
    * - Webhook signature verification via STRIPE_WEBHOOK_SECRET (NOT JWT)
-   * - Raw body required for signature verification (registered with rawBody: true)
+   * - Raw body preserved via custom content type parser in index.ts
    * - Append-only payout ledger (no updates allowed)
    * - Idempotent: unique constraint on stripeInvoiceId prevents duplicates
    * - Zero commission during free month (checks freeMonthEndsAt)
@@ -108,20 +108,16 @@ export async function stripeWebhookRoutes(fastify: FastifyInstance) {
       let event: Stripe.Event;
 
       try {
-        // Get raw body for signature verification
-        // Fastify doesn't natively support rawBody - we need to read from request.body
-        const body = request.body;
-        let rawBody: Buffer;
-        
-        if (Buffer.isBuffer(body)) {
-          rawBody = body;
-        } else if (typeof body === 'string') {
-          rawBody = Buffer.from(body);
-        } else {
-          rawBody = Buffer.from(JSON.stringify(body));
+        // SECURITY: Get raw body bytes for signature verification
+        // The custom content type parser in index.ts preserves the exact request bytes
+        // We MUST use the original bytes - re-serializing JSON breaks signature verification
+        const rawBody = (request as any).rawBody;
+        if (!rawBody || !Buffer.isBuffer(rawBody)) {
+          throw new Error('Raw body not available - content type parser may not be configured correctly');
         }
 
         // SECURITY: Verify webhook signature (prevents spoofing)
+        // PRODUCTION: STRIPE_WEBHOOK_SECRET is required (enforced at module load)
         if (STRIPE_WEBHOOK_SECRET) {
           event = stripe.webhooks.constructEvent(
             rawBody,
@@ -130,6 +126,7 @@ export async function stripeWebhookRoutes(fastify: FastifyInstance) {
           );
         } else {
           // DEV ONLY: Skip signature verification if secret not set
+          // This is acceptable in dev but would fail at startup in production
           fastify.log.warn('Stripe webhook signature verification DISABLED (dev mode)');
           event = JSON.parse(rawBody.toString());
         }

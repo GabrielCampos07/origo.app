@@ -611,6 +611,11 @@ paths:
         
         **Public endpoint:** No authentication required (or can be authenticated).
         
+        **Frontend Alignment:**
+        - Accepts both "code" (primary) and "referral_code" (alias) in request body
+        - OpenAPI documents "code" as primary field
+        - Provide either field - both are accepted for compatibility
+        
         **Privacy:**
         - Does NOT return referrer's email, name, or other PII
         - Only returns: valid/invalid + minimal referrer hint
@@ -628,6 +633,15 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ValidateReferralCodeRequest'
+            examples:
+              using_code:
+                summary: Using "code" field (primary)
+                value:
+                  code: XYZA1234
+              using_referral_code:
+                summary: Using "referral_code" field (alias)
+                value:
+                  referral_code: XYZA1234
       responses:
         '200':
           description: Validation result
@@ -916,12 +930,20 @@ components:
       properties:
         code:
           type: string
-          description: Referral code to validate
+          description: Referral code to validate (primary field)
           example: XYZA1234
           minLength: 1
           maxLength: 50
-      required:
-        - code
+        referral_code:
+          type: string
+          description: Referral code to validate (alias of "code" for frontend alignment)
+          example: XYZA1234
+          minLength: 1
+          maxLength: 50
+      required: []
+      description: |
+        Provide either "code" (primary) or "referral_code" (alias).
+        Both fields are accepted for frontend compatibility.
 
     ValidateReferralCodeResponse:
       type: object

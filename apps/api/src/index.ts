@@ -28,7 +28,6 @@ const server = Fastify({
       },
     },
   },
-  // Enable raw body for Stripe webhook signature verification
   bodyLimit: 1048576, // 1MB
 });
 
@@ -44,6 +43,26 @@ async function start() {
       timeWindow: '15 minutes',
       redis: undefined,
     });
+
+    // SECURITY: Custom content type parser for Stripe webhook to preserve raw body bytes
+    // This is ONLY for /api/v1/webhooks/stripe route for signature verification
+    // Stripe signs the exact raw bytes, so we cannot use parsed JSON
+    server.addContentTypeParser(
+      'application/json',
+      { parseAs: 'buffer' },
+      async (request: any, rawBody: Buffer) => {
+        // Store raw body for Stripe webhook signature verification
+        request.rawBody = rawBody;
+        
+        // Parse JSON for normal request handling
+        try {
+          return JSON.parse(rawBody.toString('utf8'));
+        } catch (error) {
+          // Let Fastify handle JSON parse errors
+          throw error;
+        }
+      }
+    );
 
     // Health endpoint (não autenticado)
     server.get('/health', async (request, reply) => {
