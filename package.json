@@ -1,0 +1,24 @@
+{
+  "name": "origo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Origo \u2014 HEP 1:1 app para fisioterapeutas/personal trainers + alunos",
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
+  "scripts": {
+    "api:dev": "npm run dev --workspace=apps/api",
+    "api:build": "npm run build --workspace=apps/api",
+    "api:typecheck": "npm run typecheck --workspace=apps/api",
+    "web:dev": "npm run dev --workspace=apps/web",
+    "web:build": "npm run build --workspace=apps/web",
+    "web:typecheck": "npm run typecheck --workspace=apps/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "npm@10.8.2"
+}

@@ -1,0 +1,16 @@
+node_modules/
+.env
+.env.*
+!.env.example
+!.env.local.example
+apps/*/.env
+apps/*/.env.local
+!**/.env.local.example
+**/.next/
+**/dist/
+**/build/
+.DS_Store
+*.log
+.tmp/
+.turbo/
+coverage/

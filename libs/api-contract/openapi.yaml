@@ -1,0 +1,342 @@
+openapi: 3.0.3
+info:
+  title: Origo API
+  version: 0.1.0
+  description: |
+    API para Origo — app HEP 1:1 para fisioterapeutas/personal trainers + alunos.
+    
+    **Autenticação:** JWT Bearer tokens (access_token) com TTL de 15 minutos.
+    Refresh tokens opacos com TTL de 7 dias.
+  
+servers:
+  - url: http://localhost:3001
+    description: Desenvolvimento local
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+      required:
+        - id
+        - email
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: mySecurePassword123
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token (15 min TTL)
+        refresh_token:
+          type: string
+          description: Opaque refresh token (7 day TTL)
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - access_token
+        - refresh_token
+        - user
+
+    ForgotPasswordRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+      required:
+        - email
+
+    ForgotPasswordResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Se o email informado estiver cadastrado, você receberá instruções para redefinir sua senha
+      required:
+        - message
+
+    ResetPasswordRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Reset token from email
+          example: abc123...
+        new_password:
+          type: string
+          format: password
+          minLength: 12
+          description: New password (minimum 12 characters)
+          example: myNewSecurePassword123
+      required:
+        - token
+        - new_password
+
+    ResetPasswordResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Password reset successfully
+      required:
+        - message
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Verifica se a API está funcionando e se o banco de dados está conectado
+      operationId: getHealth
+      tags:
+        - Infrastructure
+      responses:
+        '200':
+          description: API saudável
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+                  database:
+                    type: string
+                    example: connected
+        '503':
+          description: API com problemas (ex: DB desconectado)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  timestamp:
+                    type: string
+                    format: date-time
+                  database:
+                    type: string
+                    example: disconnected
+  
+  /api/v1:
+    get:
+      summary: API v1 info
+      description: Retorna informações sobre a API v1
+      operationId: getApiV1Info
+      tags:
+        - Infrastructure
+      responses:
+        '200':
+          description: Informações da API
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  version:
+                    type: string
+                  endpoints:
+                    type: object
+
+  /api/v1/auth/login:
+    post:
+      summary: Login
+      description: |
+        Autentica um usuário e retorna access token (JWT) + refresh token (opaco).
+        
+        **Rate limits:**
+        - 5 requests/min por IP
+        - 10 requests/hora por email (hash)
+        
+        **Política de segurança:**
+        - Timing constante para falhas de autenticação
+        - Sem enumeração de contas
+      operationId: login
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login bem-sucedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Invalid email or password
+        '422':
+          description: Validação falhou
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Validation Error
+                message: Email and password are required
+        '429':
+          description: Rate limit excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/forgot-password:
+    post:
+      summary: Esqueci minha senha
+      description: |
+        Envia email com link para redefinir senha.
+        
+        **IMPORTANTE:** Sempre retorna 200 com mensagem genérica,
+        independente se o email existe ou não (sem enumeração de contas).
+        
+        **Rate limits:**
+        - 3 requests/hora por email (hash)
+        - 10 requests/hora por IP
+        
+        **Email:** Enviado via SMTP (Mailhog em dev) com link válido por 30 minutos.
+      operationId: forgotPassword
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: |
+            Requisição processada (sempre retorna 200, mesmo se email não existir)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ForgotPasswordResponse'
+        '422':
+          description: Validação falhou
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Validation Error
+                message: Email is required
+        '429':
+          description: Rate limit excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/reset-password:
+    post:
+      summary: Redefinir senha
+      description: |
+        Redefine a senha usando o token recebido por email.
+        
+        **Política de segurança:**
+        - Token válido por 30 minutos
+        - Token de uso único (marcado como usado após sucesso)
+        - Invalida TODOS os refresh tokens do usuário
+        - Senha mínima: 12 caracteres
+        
+        **Erros:**
+        - 422: senha fraca
+        - 410: token expirado/usado/inválido (sempre 410, nunca 400)
+      operationId: resetPassword
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Senha redefinida com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPasswordResponse'
+        '410':
+          description: Token expirado, usado ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Gone
+                message: Reset token is invalid, expired, or already used
+        '422':
+          description: Validação falhou (senha fraca)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Validation Error
+                message: Password must be at least 12 characters
+        '429':
+          description: Rate limit excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+tags:
+  - name: Infrastructure
+    description: Endpoints de infraestrutura (health, info)
+  - name: Auth
+    description: Autenticação (login, forgot-password, reset-password)

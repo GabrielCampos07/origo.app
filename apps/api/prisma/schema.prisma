@@ -1,0 +1,62 @@
+// Prisma 6 schema for Origo
+// NOTA: Este é apenas um stub de infraestrutura (W0.4/W0.5)
+// Login, forgot-password e demais features são de responsabilidade do squad BACKEND (D1–D4)
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [citext, pgcrypto]
+}
+
+// P0 Auth Schema
+// Tokens armazenados APENAS como hash (SHA-256)
+// Purge D8: expired/used reset tokens devem ser removidos via job batch (cron diário recomendado)
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique @db.Citext
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  passwordResetTokens PasswordResetToken[]
+  refreshTokens       RefreshToken[]
+
+  @@map("users")
+}
+
+// Password reset tokens (hash-only, single-use)
+// D8 purge: WHERE expiresAt < NOW() OR usedAt IS NOT NULL
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+// Refresh tokens (hash-only, revocable)
+// D8 purge: WHERE expiresAt < NOW() OR revokedAt IS NOT NULL
+model RefreshToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
