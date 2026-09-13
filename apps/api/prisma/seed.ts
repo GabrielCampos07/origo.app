@@ -9,10 +9,11 @@ async function main() {
   // Seed user 1: prof@origo.dev
   const prof = await prisma.user.upsert({
     where: { email: 'prof@origo.dev' },
-    update: {},
+    update: { role: 'PROFESSIONAL' },
     create: {
       email: 'prof@origo.dev',
       passwordHash: await hashPassword('OrigoDemoProf1!'),
+      role: 'PROFESSIONAL',
     },
   });
   console.log('✅ Professor user:', prof.email);
@@ -20,10 +21,11 @@ async function main() {
   // Seed user 2: aluno@origo.dev
   const aluno = await prisma.user.upsert({
     where: { email: 'aluno@origo.dev' },
-    update: {},
+    update: { role: 'STUDENT' },
     create: {
       email: 'aluno@origo.dev',
       passwordHash: await hashPassword('OrigoDemoAluno1!'),
+      role: 'STUDENT',
     },
   });
   console.log('✅ Student user:', aluno.email);

@@ -14,6 +14,7 @@ import {
 } from '../lib/jwt';
 import { sendPasswordResetEmail } from '../lib/email';
 import { emailRateLimiter } from '../lib/rate-limiter';
+import { REQUIRED_DOCS_ALL_USERS, REQUIRED_DOCS_PROFESSIONAL } from './legal';
 
 const prisma = new PrismaClient();
 
@@ -77,8 +78,14 @@ export async function authRoutes(fastify: FastifyInstance) {
   /**
    * POST /api/v1/auth/login
    * Body: { email, password }
-   * Returns: { access_token, refresh_token, user: { id, email } }
+   * Returns: { access_token, refresh_token, user: { id, email }, missing_doc_versions: string[] }
    * Errors: 422 validation, 401 bad credentials, 429 rate limit
+   *
+   * Legal V2 Integration:
+   * - Returns missing_doc_versions array with required legal docs not yet accepted
+   * - Frontend should redirect to legal acceptance screens if array is non-empty
+   * - Required docs: privacy_v2_2026-09-13, terms_app_v2_2026-09-13
+   * - PROFESSIONAL users (when User.role available): also terms_saas_v2_*, payments_notice_v2_*
    *
    * BACKEND SECURITY CHECKER:
    * - Rate limited: 5/min per IP AND 10/hour per email hash (MUST-FIX 1: implemented)
@@ -129,6 +136,11 @@ export async function authRoutes(fastify: FastifyInstance) {
         // Find user
         const user = await prisma.user.findUnique({
           where: { email: email.toLowerCase() },
+          include: {
+            legalAcceptances: {
+              select: { docVersion: true },
+            },
+          },
         });
 
         // Constant-time response for bad credentials (401)
@@ -168,13 +180,28 @@ export async function authRoutes(fastify: FastifyInstance) {
           },
         });
 
+        // Calculate missing legal documents (Legal V2)
+        // User.role determines which docs are required
+        const acceptedDocVersions = new Set(
+          user.legalAcceptances.map(a => a.docVersion)
+        );
+        const requiredDocs = [
+          ...REQUIRED_DOCS_ALL_USERS,
+          ...(user.role === 'PROFESSIONAL' ? REQUIRED_DOCS_PROFESSIONAL : []),
+        ];
+        const missingDocVersions = requiredDocs.filter(
+          doc => !acceptedDocVersions.has(doc)
+        );
+
         return reply.code(200).send({
           access_token: accessToken,
           refresh_token: refreshToken,
           user: {
             id: user.id,
             email: user.email,
+            role: user.role, // PROFESSIONAL | STUDENT
           },
+          missing_doc_versions: missingDocVersions,
         });
       } catch (error) {
         fastify.log.error(error, 'Login error');
