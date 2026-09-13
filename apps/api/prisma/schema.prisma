@@ -63,13 +63,20 @@ model RefreshToken {
 }
 
 // Legal V2: User acceptance records for legal documents (LGPD compliance)
-// PURPOSE: Legal consent proof for privacy policy, terms of service, payment notices
-// PERSONAL DATA: userId+docVersion+acceptedAt constitutes personal data processing record
-// RETENTION: TBD - coordinate with legal/compliance team
+// 
+// DATABASE SECURITY - LGPD Article 7 Consent Proof:
+// PURPOSE LIMITATION: Records exist ONLY as proof of legal document acceptance
+// MINIMAL PII: userId + docVersion + acceptedAt (no IP, User-Agent, or session data)
+// IMMUTABILITY: APPEND-ONLY - never UPDATE acceptedAt or DELETE individual rows
+//   - New acceptance = new row with new docVersion
+//   - No soft-delete of acceptance records
+//   - Purge only via full User CASCADE delete or legal/compliance directive
+// RETENTION: TBD - coordinate with legal/compliance team for retention policy
+// ACCESS CONTROL: API database role should have INSERT + SELECT only (no UPDATE/DELETE)
+// 
 // GATE LOGIC (enforced in API, stored generically here):
 //   - All users: privacy@YYYY-MM-DD, terms_app@YYYY-MM-DD
 //   - PROFESSIONAL/Checkout: also terms_saas@YYYY-MM-DD, payments_notice@YYYY-MM-DD
-// NOTE: User deletion strategy (soft-delete vs CASCADE) TBD; CASCADE acceptable for P0
 model LegalAcceptance {
   id         String   @id @default(cuid())
   userId     String
