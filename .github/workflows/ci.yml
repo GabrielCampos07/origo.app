@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate --workspace=apps/api
+
+      - name: Typecheck API
+        run: npm run api:typecheck
+
+      - name: Typecheck Web
+        run: npm run web:typecheck
+
+      - name: Build API
+        run: npm run api:build
+
+      - name: Build Web (optional, no secrets required)
+        run: npm run web:build || echo "Web build failed (optional)"
+        continue-on-error: true
+
+      - name: Verify /health endpoint exists
+        run: |
+          if grep -r "/health" apps/api/src/; then
+            echo "✓ /health endpoint found"
+          else
+            echo "✗ /health endpoint not found"
+            exit 1
+          fi

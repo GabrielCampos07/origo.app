@@ -14,15 +14,26 @@ Este repositório contém a **infraestrutura base** (W0.4 + W0.5 stub) para perm
 - ✅ Health check (`GET /health`)
 - ✅ Docker Compose para desenvolvimento local
 - ✅ CI básico (typecheck + build)
+- ✅ **Autenticação P0** (login, JWT, forgot-password com reset via email)
+- ✅ **apps/web** (Next.js frontend com telas de login/cadastro/reset)
 
 **O que NÃO está implementado (propositalmente):**
-- ❌ Autenticação (login, JWT, forgot-password) — Squad **BACKEND** (D1–D4)
 - ❌ Endpoints de negócio (HEP, sessões, exercícios)
 - ❌ Apps mobile (iOS/Android) — Squad **MOBILE**
 
 ---
 
 ## 🚀 Setup Rápido (< 30 min)
+
+### Portas em Desenvolvimento
+
+| Serviço         | Porta |
+|-----------------|-------|
+| API             | 3001  |
+| Postgres        | 5435  |
+| Mailhog Web UI  | 8025  |
+| Mailhog SMTP    | 1025  |
+| Web (Next.js)   | 3456  |
 
 ### Pré-requisitos
 
@@ -41,9 +52,15 @@ cd origo
 
 # 3. Inicie a API em modo dev
 npm run api:dev
+
+# 4. Em outro terminal, inicie o frontend
+npm run web:dev
 ```
 
-A API estará rodando em **http://localhost:3001**
+A API estará rodando em **http://localhost:3001**  
+O frontend estará em **http://localhost:3456**
+
+**Para testar login local**, veja credenciais de seed em [DEMO_LOCAL.md](DEMO_LOCAL.md).
 
 ### Verificar
 
@@ -213,14 +230,6 @@ CI configurado em `.github/workflows/ci.yml`:
 ---
 
 ## 🗺️ Próximos Passos
-
-### Squad BACKEND (D1–D4)
-
-Implementar autenticação:
-- `POST /api/v1/auth/login` — JWT login
-- `POST /api/v1/auth/forgot-password` — Envio de email via Mailhog
-- Middlewares de autenticação
-- Atualizar OpenAPI em `libs/api-contract/openapi.yaml`
 
 ### Squad MOBILE
 
