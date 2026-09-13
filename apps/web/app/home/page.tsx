@@ -743,6 +743,74 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Programa de indicação (Referral card) */}
+        <div className="relative z-10 mt-12 bg-gradient-to-br from-[#e5f0e8] to-[#f0f5ed] border-2 border-[var(--brand-primary)]/40 rounded-2xl p-8 md:p-10 max-w-4xl mx-auto overflow-hidden">
+          <div className="absolute -right-8 -bottom-8 w-48 h-48 md:w-64 md:h-64 opacity-40">
+            <Image
+              src="/assets/referral-illustration-1.svg"
+              alt=""
+              fill
+              className="object-contain"
+              aria-hidden
+            />
+          </div>
+          
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-1 text-center md:text-left">
+              <div className="inline-flex items-center gap-2 bg-[var(--brand-primary)] text-white text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full mb-4">
+                <LeafAccent className="w-3 h-3" />
+                Programa de indicação
+              </div>
+              
+              <h3 className="text-2xl md:text-3xl font-semibold text-[var(--color-ink-900)] mb-3">
+                Indique e ganhe
+              </h3>
+              
+              <p className="text-base text-[var(--color-ink-700)] mb-4 max-w-lg">
+                Compartilhe o beOrigo com outros profissionais e receba <strong>15% de comissão recorrente</strong> enquanto 
+                a assinatura estiver ativa. Seu indicado ganha <strong>1 mês grátis</strong>.
+              </p>
+              
+              <ul className="text-sm text-[var(--color-ink-600)] space-y-2 mb-6 text-left max-w-md mx-auto md:mx-0">
+                <li className="flex items-start gap-2">
+                  <span className="text-[var(--brand-primary)] mt-0.5">✓</span>
+                  <span>15% recorrente após período gratuito</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[var(--brand-primary)] mt-0.5">✓</span>
+                  <span>1 mês grátis para o indicado</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[var(--brand-primary)] mt-0.5">✓</span>
+                  <span>Zero comissão durante período gratuito</span>
+                </li>
+              </ul>
+              
+              <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+                <a
+                  href="/dashboard/professor/indicacao"
+                  className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[var(--brand-primary)] text-white font-medium hover:bg-[#7da890] transition-colors"
+                >
+                  Pegar meu link
+                </a>
+                <a
+                  href="/termos-saas#indicacao"
+                  className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-white border border-[var(--brand-primary)] text-[var(--brand-primary)] font-medium hover:bg-[#f5f5f0] transition-colors"
+                >
+                  Saiba como indicar
+                </a>
+              </div>
+              
+              <p className="text-xs text-[var(--color-ink-500)] mt-4">
+                Programa exclusivo para plano Professional.{" "}
+                <Link href="/termos-saas" className="underline hover:text-[var(--brand-primary)]">
+                  Ver termos completos
+                </Link>
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="relative z-10 bg-[#f0f5ed]/90 border border-[#d1e5d9] rounded-xl p-6 text-center max-w-4xl mx-auto">
           <p className="text-sm text-[var(--color-ink-600)] leading-relaxed">
             <strong>Aviso:</strong> O beOrigo é uma ferramenta de gestão e comunicação para profissionais de saúde.
