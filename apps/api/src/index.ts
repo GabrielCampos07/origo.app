@@ -3,7 +3,8 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { PrismaClient } from '@prisma/client';
 import { authRoutes } from './routes/auth';
-import { legalRoutes } from './routes/legal';
+import { legalRoutes, REQUIRED_DOCS_ALL_USERS, REQUIRED_DOCS_PROFESSIONAL } from './routes/legal';
+import { verifyAccessToken } from './lib/jwt';
 
 const prisma = new PrismaClient({
   log: process.env.LOG_LEVEL === 'debug' ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
@@ -86,6 +87,75 @@ async function start() {
 
     // Register legal routes (Legal V2)
     await server.register(legalRoutes);
+
+    // Legal acceptance enforcement middleware (403 if missing required docs)
+    server.addHook('onRequest', async (request, reply) => {
+      // Exception list: routes that should NOT be blocked by legal acceptance
+      const exemptRoutes = [
+        '/health',
+        '/api/v1',
+        '/api/v1/auth/login',
+        '/api/v1/auth/forgot-password',
+        '/api/v1/auth/reset-password',
+        '/api/v1/legal/accept',
+        '/api/v1/legal/missing',
+      ];
+
+      // Skip enforcement for exempt routes
+      if (exemptRoutes.includes(request.url)) {
+        return;
+      }
+
+      // Skip enforcement for non-authenticated requests (let auth middleware handle 401)
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return;
+      }
+
+      try {
+        // Extract userId from JWT
+        const token = authHeader.substring(7);
+        const payload = verifyAccessToken(token);
+        const userId = payload.userId;
+
+        // Fetch user and their legal acceptances
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          include: {
+            legalAcceptances: {
+              select: { docVersion: true },
+            },
+          },
+        });
+
+        if (!user) {
+          // User not found - let the route handler deal with it
+          return;
+        }
+
+        // Determine required docs based on user role
+        const requiredDocs = [
+          ...REQUIRED_DOCS_ALL_USERS,
+          ...(user.role === 'PROFESSIONAL' ? REQUIRED_DOCS_PROFESSIONAL : []),
+        ];
+
+        // Check which docs are missing
+        const acceptedDocVersions = new Set(user.legalAcceptances.map(a => a.docVersion));
+        const missingDocVersions = requiredDocs.filter(doc => !acceptedDocVersions.has(doc));
+
+        // If user is missing required docs, return 403
+        if (missingDocVersions.length > 0) {
+          return reply.code(403).send({
+            error: 'legal_acceptance_required',
+            missing_doc_versions: missingDocVersions,
+          });
+        }
+      } catch (error) {
+        // JWT verification failed or other error - let it pass through
+        // The route handler will properly handle auth errors
+        return;
+      }
+    });
     const port = parseInt(process.env.PORT || '3001', 10);
     const host = process.env.HOST || '0.0.0.0';
 

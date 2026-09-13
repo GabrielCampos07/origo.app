@@ -7,6 +7,12 @@ info:
     
     **Autenticação:** JWT Bearer tokens (access_token) com TTL de 15 minutos.
     Refresh tokens opacos com TTL de 7 dias.
+    
+    **Legal Acceptance Enforcement:** Protected authenticated endpoints return **403 Forbidden** 
+    if user is missing required legal documents for their role (PROFESSIONAL vs STUDENT).
+    Response: `{ error: 'legal_acceptance_required', missing_doc_versions: [...] }`
+    
+    **Exempt routes (no 403):** /health, /api/v1/auth/*, /api/v1/legal/accept, /api/v1/legal/missing
   
 servers:
   - url: http://localhost:3001
@@ -389,7 +395,8 @@ paths:
         **Security:**
         - userId extracted from JWT (server-side, tamper-proof)
         - acceptedAt timestamp is server-controlled
-        - INSERT ONLY: re-accepting same docs = 200 no-op (keeps original acceptedAt)
+        - INSERT ONLY: uses createMany with skipDuplicates: true (no upsert, no timestamp updates)
+        - Re-accepting returns earliest original acceptedAt from stored records
         - Only whitelisted docVersions accepted
       operationId: recordLegalAcceptance
       tags:
@@ -447,7 +454,7 @@ paths:
         - Checkout gate: verify PROFESSIONAL users have accepted all required docs
         
         **Role-based requirements:**
-        - STANDARD users: privacy + terms_app
+        - STUDENT users: privacy + terms_app
         - PROFESSIONAL users: privacy + terms_app + terms_saas + payments_notice
         
         **Frontend URL mappings (dev base: http://localhost:3456):**
@@ -562,12 +569,39 @@ components:
         - error
         - message
 
+    LegalAcceptanceRequiredError:
+      type: object
+      properties:
+        error:
+          type: string
+          enum: [legal_acceptance_required]
+          description: Error code indicating missing legal acceptances
+        missing_doc_versions:
+          type: array
+          items:
+            type: string
+          description: List of required docVersions not yet accepted by user
+          example: ["privacy_v2_2026-09-13", "terms_app_v2_2026-09-13"]
+      required:
+        - error
+        - missing_doc_versions
+
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT access token from /api/v1/auth/login
+      description: |
+        JWT access token from /api/v1/auth/login
+        
+        **Legal Acceptance Enforcement:**
+        Protected authenticated endpoints return 403 if user is missing required legal documents.
+        
+        **Exempt routes (no 403):**
+        - /health
+        - /api/v1/auth/* (all auth routes)
+        - /api/v1/legal/accept
+        - /api/v1/legal/missing
 
 tags:
   - name: Infrastructure
