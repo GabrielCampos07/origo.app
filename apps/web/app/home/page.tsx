@@ -43,18 +43,12 @@ export default function HomePage() {
           >
             Para quem
           </a>
-          <button
+          <a
+            href="mailto:contact@beorigo.app?subject=Interesse%20em%20beOrigo%20para%20profissionais"
             className="bg-[var(--brand-primary)] text-white font-medium text-base px-5 py-3.5 rounded-xl h-[52px] flex items-center justify-center tracking-[0.2px] hover:opacity-90 transition-opacity"
-            onClick={() => {
-              if (BILLING_LIVE) {
-                window.location.href = "https://calendly.com/beorigo";
-              } else {
-                alert("Em breve! Entre em contato: contato@beorigo.com");
-              }
-            }}
           >
             Para profissionais 1:1
-          </button>
+          </a>
         </nav>
       </header>
 
@@ -94,18 +88,12 @@ export default function HomePage() {
         </p>
 
         <div className="flex items-center gap-3">
-          <button
+          <a
+            href="mailto:contact@beorigo.app?subject=Interesse%20em%20beOrigo%20para%20profissionais"
             className="bg-[var(--brand-primary)] text-white font-medium text-base px-5 py-3.5 rounded-xl h-[52px] flex items-center justify-center tracking-[0.2px] hover:opacity-90 transition-opacity"
-            onClick={() => {
-              if (BILLING_LIVE) {
-                window.location.href = "https://calendly.com/beorigo";
-              } else {
-                alert("Em breve! Falar com consultor: contato@beorigo.com");
-              }
-            }}
           >
             Para profissionais 1:1
-          </button>
+          </a>
           <Link
             href="/login"
             className="bg-white border border-[var(--border-default)] text-[var(--fg-primary)] font-medium text-base px-5 py-3.5 rounded-xl h-[52px] flex items-center justify-center tracking-[0.2px] hover:bg-gray-50 transition-colors"
@@ -463,18 +451,12 @@ export default function HomePage() {
         <p className="text-center font-normal text-lg text-[var(--color-ink-600)] max-w-2xl">
           Agende uma conversa com nosso time e veja como o beOrigo pode transformar seu atendimento 1:1.
         </p>
-        <button
-          className="bg-[var(--brand-primary)] text-white font-medium text-lg px-8 py-4 rounded-xl hover:opacity-90 transition-opacity"
-          onClick={() => {
-            if (BILLING_LIVE) {
-              window.location.href = "https://calendly.com/beorigo";
-            } else {
-              window.location.href = "mailto:contato@beorigo.com";
-            }
-          }}
+        <a
+          href="mailto:contact@beorigo.app?subject=Solicita%C3%A7%C3%A3o%20de%20consulta%201:1%20-%20beOrigo"
+          className="bg-[var(--brand-primary)] text-white font-medium text-lg px-8 py-4 rounded-xl hover:opacity-90 transition-opacity inline-flex items-center justify-center"
         >
           Falar com consultor 1:1
-        </button>
+        </a>
       </section>
 
       {/* Footer */}
@@ -522,7 +504,7 @@ export default function HomePage() {
 
             <div className="flex flex-col gap-3">
               <h3 className="font-semibold text-sm text-white mb-1">Empresa</h3>
-              <a href="mailto:contato@beorigo.com" className="text-sm text-white/70 hover:text-white transition-colors">
+              <a href="mailto:contact@beorigo.app" className="text-sm text-white/70 hover:text-white transition-colors">
                 Contato
               </a>
               <a href="/privacidade" className="text-sm text-white/70 hover:text-white transition-colors">
