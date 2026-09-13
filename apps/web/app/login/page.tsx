@@ -38,8 +38,38 @@ export default function LoginPage() {
       else setError("Não foi possível entrar. Tente novamente");
       return;
     }
-    storeAuthSession(res.data);
-    router.push("/dashboard");
+
+    // DEMO stub: if role missing, map seed emails
+    let user = res.data.user;
+    if (!user.role) {
+      if (normalized === "prof@origo.dev") {
+        user = { ...user, role: "PROFESSIONAL" };
+      } else if (normalized === "aluno@origo.dev") {
+        user = { ...user, role: "STUDENT" };
+      }
+    }
+
+    // Store auth session with role and missing docs
+    storeAuthSession({
+      access_token: res.data.access_token,
+      refresh_token: res.data.refresh_token,
+      user,
+      missing_doc_versions: res.data.missing_doc_versions,
+    });
+
+    // Redirect based on missing docs and role
+    if (res.data.missing_doc_versions && res.data.missing_doc_versions.length > 0) {
+      router.push("/legal/accept");
+    } else {
+      // Redirect to role-specific dashboard
+      if (user.role === "PROFESSIONAL") {
+        router.push("/dashboard/professor");
+      } else if (user.role === "STUDENT") {
+        router.push("/dashboard/aluno");
+      } else {
+        router.push("/dashboard");
+      }
+    }
   }
 
   return (

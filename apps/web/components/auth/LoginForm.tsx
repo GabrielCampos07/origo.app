@@ -44,14 +44,38 @@ export function LoginForm() {
     setLoading(false);
 
     if (result.ok) {
+      // DEMO stub: if role missing, map seed emails
+      let user = result.data.user;
+      if (!user.role) {
+        if (email.trim().toLowerCase() === "prof@origo.dev") {
+          user = { ...user, role: "PROFESSIONAL" };
+        } else if (email.trim().toLowerCase() === "aluno@origo.dev") {
+          user = { ...user, role: "STUDENT" };
+        }
+      }
+
       storeAuthSession({
         access_token: result.data.access_token,
         refresh_token: result.data.refresh_token,
-        user: result.data.user,
+        user,
+        missing_doc_versions: result.data.missing_doc_versions,
       });
       setSuccess(true);
       setPassword("");
-      router.push("/dashboard");
+
+      // Redirect to legal acceptance if missing docs
+      if (result.data.missing_doc_versions && result.data.missing_doc_versions.length > 0) {
+        router.push("/legal/accept");
+      } else {
+        // Redirect to role-specific dashboard
+        if (user.role === "PROFESSIONAL") {
+          router.push("/dashboard/professor");
+        } else if (user.role === "STUDENT") {
+          router.push("/dashboard/aluno");
+        } else {
+          router.push("/dashboard");
+        }
+      }
       return;
     }
 
