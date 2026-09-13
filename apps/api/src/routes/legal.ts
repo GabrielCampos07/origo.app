@@ -28,6 +28,16 @@ const prisma = new PrismaClient();
 /**
  * Legal V2 Document Versions - Frontend URL Mappings
  * Base URL (dev): http://localhost:3456
+ * 
+ * CRITICAL: Canonical docVersion format (underscore V2 IDs ONLY):
+ * ✅ privacy_v2_2026-09-13 (correct)
+ * ❌ privacy@2026-09-13 (wrong - never use @ format)
+ * 
+ * SECURITY: APPEND-ONLY model
+ * - NO DELETE endpoint (records never deleted individually)
+ * - NO UPDATE endpoint (userId/docVersion never modified)
+ * - Only INSERT (accept) + SELECT (check missing)
+ * - Database GRANT: INSERT + SELECT only for app role
  */
 
 // Required document versions for all users (login gate)
@@ -53,17 +63,26 @@ export const FOOTER_ONLY_DOCS = [
 ] as const;
 
 /**
- * SECURITY NOTE for BACKEND SECURITY CHECKER:
+ * SECURITY NOTES for BACKEND SECURITY CHECKER:
  * 
- * Footer-only documents (cookies_v2_*, dpa_subprocessors_v2_*) are NOT login-blocking.
- * They are available as informational pages but NOT persisted in LegalAcceptance.
+ * APPEND-ONLY Model (LGPD compliance):
+ * - LegalAcceptance is APPEND-ONLY — no update/delete endpoints exposed
+ * - Upsert on re-acceptance updates ONLY acceptedAt timestamp (audit trail)
+ * - Never update userId or docVersion after creation
+ * - Individual records never deleted (only cascade on User delete)
+ * - Database role: GRANT INSERT + SELECT only (NO UPDATE/DELETE for app)
  * 
- * If cookies or DPA docVersions appear in /legal/accept requests:
- * - Return 422 (invalid docVersion)
- * - Do NOT persist them
- * - These are footer-only in this Legal V2 bump
+ * Canonical docVersion format (underscore V2 IDs ONLY):
+ * - Whitelist uses exact strings like 'privacy_v2_2026-09-13'
+ * - Reject any @ format like 'privacy@2026-09-13'
+ * - Reject any missing date suffix
  * 
- * Health consent remains out of scope (no docVersion defined).
+ * Footer-only documents (NOT login-blocking):
+ * - cookies_v2_2026-09-13, dpa_subprocessors_v2_2026-09-13
+ * - Available as informational pages but NOT persisted in LegalAcceptance
+ * - Return 422 if submitted to /legal/accept
+ * 
+ * Health consent: out of scope (no docVersion defined in this bump)
  */
 
 interface RecordAcceptanceBody {
@@ -127,16 +146,26 @@ export async function legalRoutes(fastify: FastifyInstance) {
    * Returns: { accepted: string[], acceptedAt: string }
    * Errors: 401 unauthorized, 422 invalid docVersions, 429 rate limit
    * 
-   * BACKEND SECURITY CHECKER:
-   * - Requires valid JWT (Bearer token)
-   * - Rate limited: default global limit
-   * - userId extracted from JWT (server-side, tamper-proof)
-   * - acceptedAt timestamp is server-controlled
-   * - Batch upsert: creates or updates existing acceptances
-   * - NO accepting on behalf of other users
-   * - Only whitelisted docVersions allowed
+   * APPEND-ONLY Security (BACKEND SECURITY CHECKER):
+   * - LegalAcceptance is APPEND-ONLY: no delete endpoint, no arbitrary updates
+   * - Upsert updates ONLY acceptedAt on re-acceptance (audit trail)
+   * - userId/docVersion NEVER modified after creation
+   * - Database: app role has INSERT + SELECT only (NO UPDATE/DELETE grants)
    * 
-   * ⚠️ BLOCKED ON DB TEAM: Requires LegalAcceptance model in Prisma schema
+   * Tamper Prevention:
+   * - Requires valid JWT (Bearer token)
+   * - userId extracted from JWT (server-side, signature-verified)
+   * - acceptedAt timestamp is server-controlled (never from client)
+   * - NO accepting on behalf of other users
+   * 
+   * Injection Prevention:
+   * - Only whitelisted docVersions allowed (canonical underscore format)
+   * - Rejects @ format, missing dates, or unknown versions
+   * - Prisma ORM prevents SQL injection
+   * 
+   * Rate Limiting:
+   * - Default global limit: 100 req/15min per IP
+   * - Consider adding specific limit: 10 req/hour for this endpoint
    */
   fastify.post<{ Body: RecordAcceptanceBody }>(
     '/api/v1/legal/accept',

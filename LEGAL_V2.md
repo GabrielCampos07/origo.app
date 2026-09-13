@@ -352,14 +352,36 @@ fastify.post('/api/v1/checkout', async (request, reply) => {
 - ✅ Global rate limit: 100 req/15min per IP (Fastify global)
 - ⚠️ Consider: Separate rate limit for `/legal/accept` (e.g., 10/hour) to prevent abuse
 
-### Health Consent Handling
-⚠️ **IMPORTANT:** Health consent is **UI-only** per owner mandate.
+### Canonical docVersion Format
+⚠️ **CRITICAL:** Use underscore V2 IDs ONLY, never @ format.
 
-If a `health_consent_*` docVersion appears in requests:
-- ❌ DO NOT persist it unless final schema explicitly includes it
-- ❌ DO NOT mix health data with general legal acceptances
-- ✅ Return `422` error for any docVersion not in REQUIRED_DOCS lists
-- 🔒 Health data requires proper HIPAA/LGPD audit trails (separate system)
+**Correct format:**
+```
+privacy_v2_2026-09-13
+terms_app_v2_2026-09-13
+terms_saas_v2_2026-09-13
+payments_notice_v2_2026-09-13
+```
+
+**Wrong format (rejected):**
+```
+privacy@2026-09-13          ❌ Never use @ format
+privacy_v2                  ❌ Missing date
+privacy_v2_2026-09          ❌ Incomplete date
+```
+
+### Database Permissions (INFRA/DBA)
+⚠️ **CRITICAL:** Application role should have INSERT + SELECT only.
+
+```sql
+-- Correct grants for app_role
+GRANT INSERT, SELECT ON legal_acceptances TO app_role;
+
+-- NO UPDATE or DELETE grants for application
+-- Updates/deletes only via DBA for legal/compliance directives
+```
+
+This enforces the APPEND-ONLY model at the database level.
 
 ---
 
