@@ -39,7 +39,7 @@ export default function LoginPage() {
       return;
     }
     storeAuthSession(res.data);
-    router.push("/");
+    router.push("/dashboard");
   }
 
   return (

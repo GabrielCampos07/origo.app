@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { login } from "@/lib/api";
 import { storeAuthSession } from "@/lib/auth-storage";
 import { isValidEmail } from "@/lib/validation";
@@ -10,6 +11,7 @@ import { FormField } from "./FormField";
 import { SubmitButton } from "./SubmitButton";
 
 export function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,6 +51,7 @@ export function LoginForm() {
       });
       setSuccess(true);
       setPassword("");
+      router.push("/dashboard");
       return;
     }
 

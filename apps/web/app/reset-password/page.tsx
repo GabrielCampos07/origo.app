@@ -4,15 +4,16 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { resetPassword } from "../../lib/api";
-import { isValidPassword } from "../../lib/validation";
+import { isValidPassword, PASSWORD_MIN_LENGTH } from "../../lib/validation";
 import { AuthLayout } from "../../components/auth/AuthLayout";
 import { Alert } from "../../components/auth/Alert";
 
 function readResetToken(): string | null {
   if (typeof window === "undefined") return null;
   const hash = window.location.hash?.replace(/^#/, "") || "";
-  if (hash.startsWith("token=")) return decodeURIComponent(hash.slice("token=".length)) || null;
-  if (hash) return decodeURIComponent(hash) || null;
+  if (hash.startsWith("token=")) {
+    return decodeURIComponent(hash.slice("token=".length)) || null;
+  }
   const params = new URLSearchParams(window.location.search);
   return params.get("token");
 }
@@ -31,9 +32,6 @@ export default function ResetPasswordPage() {
     const t = readResetToken();
     setToken(t);
     if (t) {
-      // Prefer hash; always strip query token from history
-      window.history.replaceState({}, "", window.location.pathname + "#");
-      // clear remaining hash after capturing
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -42,7 +40,7 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError(null);
     const next: typeof fieldErrors = {};
-    if (!isValidPassword(password)) next.password = "Senha deve ter pelo menos 12 caracteres";
+    if (!isValidPassword(password)) next.password = `Senha deve ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres`;
     if (password !== confirm) next.confirm = "As senhas não coincidem";
     setFieldErrors(next);
     if (Object.keys(next).length) return;
@@ -55,9 +53,9 @@ export default function ResetPasswordPage() {
     const res = await resetPassword(token, password);
     setLoading(false);
     if (!res.ok) {
-      if (res.kind === "gone") setError("Este link expirou ou já foi usado");
-      else if (res.kind === "validation") setError("Senha não atende aos requisitos");
-      else if (res.kind === "rate_limit") setError("Muitas tentativas. Aguarde e tente novamente");
+      if (res.kind === "gone") setError("Este link expirou ou já foi usado (410)");
+      else if (res.kind === "validation") setError("Senha não atende aos requisitos (422)");
+      else if (res.kind === "rate_limit") setError("Muitas tentativas. Aguarde e tente novamente (429)");
       else if (res.kind === "network") setError("Falha de rede. Verifique se a API está em :3001");
       else setError("Não foi possível redefinir a senha");
       return;
