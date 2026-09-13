@@ -71,8 +71,16 @@ components:
           description: |
             Legal V2: List of required legal documents not yet accepted by user.
             Frontend should redirect to legal acceptance screens if non-empty.
-            Required docs: privacy_v2_2026-09-13, terms_app_v2_2026-09-13
-            PROFESSIONAL users also need: terms_saas_v2_2026-09-13, payments_notice_v2_2026-09-13
+            
+            Login gate (all users):
+            - privacy_v2_2026-09-13 → /privacidade
+            - terms_app_v2_2026-09-13 → /termos
+            
+            Checkout gate (PROFESSIONAL additional):
+            - terms_saas_v2_2026-09-13 → /termos-saas
+            - payments_notice_v2_2026-09-13 → /aviso-pagamentos
+            
+            Base URL (dev): http://localhost:3456
           example: ["privacy_v2_2026-09-13", "terms_app_v2_2026-09-13"]
       required:
         - access_token
@@ -357,13 +365,19 @@ paths:
       description: |
         Records user acceptance of one or more legal documents (privacy, terms, payments).
         
-        **Required docVersions (all users):**
-        - `privacy_v2_2026-09-13` (Privacy Policy V2)
-        - `terms_app_v2_2026-09-13` (App Terms V2)
+        **Required docVersions (all users - login gate):**
+        - `privacy_v2_2026-09-13` → web `/privacidade` (Privacy Policy V2)
+        - `terms_app_v2_2026-09-13` → web `/termos` (App Terms V2)
         
-        **Additional required docVersions (PROFESSIONAL users / checkout gate):**
-        - `terms_saas_v2_2026-09-13` (SaaS Terms V2)
-        - `payments_notice_v2_2026-09-13` (Payments Notice V2)
+        **Additional required docVersions (PROFESSIONAL users - checkout gate):**
+        - `terms_saas_v2_2026-09-13` → web `/termos-saas` (SaaS Terms V2)
+        - `payments_notice_v2_2026-09-13` → web `/aviso-pagamentos` (Payments Notice V2)
+        
+        **Footer only (NOT login-blocking):**
+        - `cookies_v2_2026-09-13` → web `/cookies` (Cookies Policy V2)
+        - `dpa_subprocessors_v2_2026-09-13` → web `/dpa` (DPA Subprocessors V2)
+        
+        Base URL (dev): `http://localhost:3456`
         
         **Security:**
         - userId extracted from JWT (server-side, tamper-proof)
@@ -428,6 +442,12 @@ paths:
         **Role-based requirements:**
         - STANDARD users: privacy + terms_app
         - PROFESSIONAL users: privacy + terms_app + terms_saas + payments_notice
+        
+        **Frontend URL mappings (dev base: http://localhost:3456):**
+        - `privacy_v2_2026-09-13` → `/privacidade`
+        - `terms_app_v2_2026-09-13` → `/termos`
+        - `terms_saas_v2_2026-09-13` → `/termos-saas`
+        - `payments_notice_v2_2026-09-13` → `/aviso-pagamentos`
       operationId: getMissingLegalDocs
       tags:
         - Legal

@@ -25,37 +25,45 @@ const prisma = new PrismaClient();
  * }
  */
 
+/**
+ * Legal V2 Document Versions - Frontend URL Mappings
+ * Base URL (dev): http://localhost:3456
+ */
+
 // Required document versions for all users (login gate)
-// Frontend URL mappings for user-facing legal pages
+// These MUST be accepted before proceeding past login
 export const REQUIRED_DOCS_ALL_USERS = [
-  'privacy_v2_2026-09-13',      // Frontend: /privacidade
-  'terms_app_v2_2026-09-13',    // Frontend: /termos
+  'privacy_v2_2026-09-13',      // → /privacidade
+  'terms_app_v2_2026-09-13',    // → /termos
 ] as const;
 
 // Additional required documents for PROFESSIONAL users (checkout gate)
-// Frontend URL mappings for PROFESSIONAL-specific legal pages
+// These are checked in addition to base docs for PROFESSIONAL flows
 export const REQUIRED_DOCS_PROFESSIONAL = [
-  'terms_saas_v2_2026-09-13',        // Frontend: /termos-saas
-  'payments_notice_v2_2026-09-13',   // Frontend: /aviso-pagamentos
+  'terms_saas_v2_2026-09-13',        // → /termos-saas
+  'payments_notice_v2_2026-09-13',   // → /aviso-pagamentos
 ] as const;
 
-// Optional documents (UI-only, not API-gated)
-// NOTE: Health consent & cookies/DPA are UI-only and NOT enforced at API level
-// cookies/DPA: footer only, not login-blocking
-export const OPTIONAL_DOCS = [
-  // 'cookies_notice' → footer only, not persisted
-  // 'dpa_notice' → footer only, not persisted
+// Footer-only documents (NOT login-blocking in this Legal V2 bump)
+// These are available at the URLs below but NOT persisted in LegalAcceptance
+// They do NOT block login or checkout
+export const FOOTER_ONLY_DOCS = [
+  // 'cookies_v2_2026-09-13' → /cookies (footer only)
+  // 'dpa_subprocessors_v2_2026-09-13' → /dpa (footer only)
 ] as const;
 
 /**
  * SECURITY NOTE for BACKEND SECURITY CHECKER:
  * 
- * Health consent is UI-only per owner mandate (2026-09-13).
- * If a health_consent docVersion appears in requests, DO NOT persist it
- * unless the final schema explicitly includes it with proper HIPAA/LGPD
- * audit trail controls.
+ * Footer-only documents (cookies_v2_*, dpa_subprocessors_v2_*) are NOT login-blocking.
+ * They are available as informational pages but NOT persisted in LegalAcceptance.
  * 
- * Current approach: return 422 for any docVersion not in REQUIRED_DOCS_* lists.
+ * If cookies or DPA docVersions appear in /legal/accept requests:
+ * - Return 422 (invalid docVersion)
+ * - Do NOT persist them
+ * - These are footer-only in this Legal V2 bump
+ * 
+ * Health consent remains out of scope (no docVersion defined).
  */
 
 interface RecordAcceptanceBody {

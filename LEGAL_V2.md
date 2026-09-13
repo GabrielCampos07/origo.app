@@ -36,24 +36,33 @@ The `User` model currently does NOT have a `role` or `subscriptionTier` field. T
 
 ## Required Documents & Frontend URLs
 
-### All Users (Login Gate)
-All authenticated users MUST accept these documents:
+**Base URL (dev):** `http://localhost:3456`
 
-- `privacy_v2_2026-09-13` → Frontend URL: `/privacidade`
-- `terms_app_v2_2026-09-13` → Frontend URL: `/termos`
+### All Users (Login Gate) — REQUIRED
+All authenticated users MUST accept these documents before proceeding:
 
-### PROFESSIONAL Users (Checkout Gate)
+| docVersion | Frontend Path | Full URL (dev) | Document |
+|------------|---------------|----------------|----------|
+| `privacy_v2_2026-09-13` | `/privacidade` | `http://localhost:3456/privacidade` | Privacy Policy V2 |
+| `terms_app_v2_2026-09-13` | `/termos` | `http://localhost:3456/termos` | App Terms of Service V2 |
+
+### PROFESSIONAL Users (Checkout Gate) — ADDITIONAL REQUIRED
 Users with PROFESSIONAL role or during checkout MUST also accept:
 
-- `terms_saas_v2_2026-09-13` → Frontend URL: `/termos-saas`
-- `payments_notice_v2_2026-09-13` → Frontend URL: `/aviso-pagamentos`
+| docVersion | Frontend Path | Full URL (dev) | Document |
+|------------|---------------|----------------|----------|
+| `terms_saas_v2_2026-09-13` | `/termos-saas` | `http://localhost:3456/termos-saas` | SaaS Terms V2 |
+| `payments_notice_v2_2026-09-13` | `/aviso-pagamentos` | `http://localhost:3456/aviso-pagamentos` | Payments Notice V2 |
 
-### Optional / UI-Only Documents
-The following are **NOT** enforced at the API level (footer only):
+### Footer Only (NOT Login-Blocking)
+The following are **available but NOT enforced** at the API level in this bump:
 
-- Cookie consent → Footer UI preference, not persisted
-- DPA notices → Footer informational, not login-blocking
-- Health consent → Out of scope for Legal V2 (see Security Note below)
+| docVersion | Frontend Path | Full URL (dev) | Document |
+|------------|---------------|----------------|----------|
+| `cookies_v2_2026-09-13` | `/cookies` | `http://localhost:3456/cookies` | Cookies Policy V2 |
+| `dpa_subprocessors_v2_2026-09-13` | `/dpa` | `http://localhost:3456/dpa` | DPA Subprocessors V2 |
+
+**Note:** Cookies and DPA docs are footer-only informational pages. They are NOT persisted in `LegalAcceptance` and do NOT block login or checkout in this Legal V2 bump.
 
 ---
 
@@ -172,14 +181,31 @@ For PROFESSIONAL users:
 
 ### Frontend URL Mapping
 
-When redirecting users to legal acceptance screens, use these URLs:
+When redirecting users to legal acceptance screens:
 
-| docVersion | Frontend Route | Description |
-|------------|---------------|-------------|
-| `privacy_v2_2026-09-13` | `/privacidade` | Privacy Policy V2 |
-| `terms_app_v2_2026-09-13` | `/termos` | App Terms of Service V2 |
-| `terms_saas_v2_2026-09-13` | `/termos-saas` | SaaS Terms V2 (PROFESSIONAL) |
-| `payments_notice_v2_2026-09-13` | `/aviso-pagamentos` | Payments Notice V2 (PROFESSIONAL) |
+**Login gate (all users):**
+```typescript
+const URL_MAP = {
+  'privacy_v2_2026-09-13': 'http://localhost:3456/privacidade',
+  'terms_app_v2_2026-09-13': 'http://localhost:3456/termos',
+};
+```
+
+**Checkout gate (PROFESSIONAL additional):**
+```typescript
+const URL_MAP_PROFESSIONAL = {
+  'terms_saas_v2_2026-09-13': 'http://localhost:3456/termos-saas',
+  'payments_notice_v2_2026-09-13': 'http://localhost:3456/aviso-pagamentos',
+};
+```
+
+**Footer only (NOT blocking):**
+```typescript
+const URL_MAP_FOOTER = {
+  'cookies_v2_2026-09-13': 'http://localhost:3456/cookies',
+  'dpa_subprocessors_v2_2026-09-13': 'http://localhost:3456/dpa',
+};
+```
 
 ### 1. After Login: Check Missing Docs
 
