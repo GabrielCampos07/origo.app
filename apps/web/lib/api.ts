@@ -1,4 +1,4 @@
-import { storeMissingDocVersions, redirectToLegalAccept } from "./legal-storage";
+import { storeMissingDocVersions } from "./auth-storage";
 
 export type ApiErrorKind =
   | "validation"
@@ -33,7 +33,12 @@ export function handleApiError<T>(result: ApiResult<T>): void {
     if (result.missing_doc_versions) {
       storeMissingDocVersions(result.missing_doc_versions);
     }
-    redirectToLegalAccept();
+    // Redirect to /legal/accept with current path as return URL
+    if (typeof window !== "undefined") {
+      const currentPath = window.location.pathname + window.location.search;
+      const returnUrl = encodeURIComponent(currentPath);
+      window.location.href = `/legal/accept?return=${returnUrl}`;
+    }
   }
 }
 

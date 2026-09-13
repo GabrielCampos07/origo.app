@@ -53,15 +53,6 @@ export async function getReferralCode(): Promise<ApiResult<ReferralCode>> {
 }
 
 /**
- * POST /api/v1/referrals/code
- * Regenerates user's referral code (optional feature).
- * PROFESSIONAL only.
- */
-export async function regenerateReferralCode(): Promise<ApiResult<ReferralCode>> {
-  return apiPostAuth<ReferralCode>("/api/v1/referrals/code", {});
-}
-
-/**
  * GET /api/v1/referrals/status
  * Returns referral status: referred users list + payout summary.
  * PROFESSIONAL only.

@@ -25,7 +25,7 @@ export default function ReferralDashboardPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      // SEC: Require auth + PROFESSIONAL role
+      // SEC: Require auth + PROFESSIONAL role (fail-closed)
       const token = getAccessToken();
       if (!token) {
         router.push("/login?redirect=/dashboard/professor/indicacao");
@@ -34,8 +34,8 @@ export default function ReferralDashboardPage() {
 
       const storedUser = getStoredUser();
 
-      // SEC: STUDENT role cannot access referral program
-      if (storedUser?.role === "STUDENT") {
+      // SEC: Only PROFESSIONAL role can access referral program (fail-closed)
+      if (storedUser?.role !== "PROFESSIONAL") {
         router.push("/dashboard");
         return;
       }

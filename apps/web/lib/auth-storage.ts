@@ -71,3 +71,12 @@ export function clearMissingDocVersions(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(MISSING_DOCS_KEY);
 }
+
+export function storeMissingDocVersions(versions: string[]): void {
+  if (typeof window === "undefined") return;
+  if (!versions || versions.length === 0) {
+    localStorage.removeItem(MISSING_DOCS_KEY);
+    return;
+  }
+  localStorage.setItem(MISSING_DOCS_KEY, JSON.stringify(versions));
+}

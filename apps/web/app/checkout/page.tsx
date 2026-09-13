@@ -28,12 +28,12 @@ const PLANS: Record<PlanId, Plan> = {
     price_annual: 470.4,
     description: "Para quem está começando",
     features: [
-      "Até 10 alunos ativos",
+      "Até 15 alunos ativos",
       "HEP ilimitado",
       "Relatório de adesão",
       "Registro clínico mínimo",
     ],
-    cta: "Assinar Start",
+    cta: "Começar trial de 14 dias",
   },
   pro: {
     id: "pro",
@@ -42,28 +42,27 @@ const PLANS: Record<PlanId, Plan> = {
     price_annual: 758.4,
     description: "Para atendimento consolidado",
     features: [
-      "Até 30 alunos ativos",
+      "Alunos ilimitados",
       "HEP ilimitado",
       "Relatório de adesão avançado",
-      "Registro clínico completo",
+      "Registro clínico leve / mínimo",
       "Suporte prioritário",
     ],
     cta: "Assinar Pro",
   },
   clinic: {
     id: "clinic",
-    name: "Clínica",
+    name: "Clinic",
     price_monthly: 149.0,
     price_annual: 1430.4,
     description: "Para equipes e clínicas",
     features: [
+      "Até 3 seats (profissionais)",
       "Alunos ilimitados",
-      "Múltiplos profissionais",
       "Dashboard de gestão",
-      "Whitelabel (em breve)",
       "Suporte dedicado",
     ],
-    cta: "Falar com time",
+    cta: "Assinar Clinic",
   },
 };
 
@@ -82,7 +81,7 @@ export default function CheckoutPage() {
   const [showCouponField, setShowCouponField] = useState(false);
 
   useEffect(() => {
-    // SEC: Require auth + PROFESSIONAL role for checkout
+    // SEC: Require auth + PROFESSIONAL role for checkout (fail-closed)
     const token = getAccessToken();
     if (!token) {
       router.push("/login?redirect=/checkout");
@@ -91,8 +90,8 @@ export default function CheckoutPage() {
     
     const storedUser = getStoredUser();
     
-    // SEC: STUDENT role cannot access checkout (no subscription)
-    if (storedUser?.role === "STUDENT") {
+    // SEC: Only PROFESSIONAL role can access checkout (fail-closed)
+    if (storedUser?.role !== "PROFESSIONAL") {
       router.push("/dashboard");
       return;
     }
