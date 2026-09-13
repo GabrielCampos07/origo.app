@@ -1,6 +1,9 @@
+import { storeMissingDocVersions } from "./auth-storage";
+
 export type ApiErrorKind =
   | "validation"
   | "unauthorized"
+  | "legal_acceptance_required"
   | "rate_limit"
   | "gone"
   | "network"
@@ -8,7 +11,36 @@ export type ApiErrorKind =
 
 export type ApiResult<T> =
   | { ok: true; data: T }
-  | { ok: false; kind: ApiErrorKind; message: string; status?: number };
+  | { 
+      ok: false; 
+      kind: ApiErrorKind; 
+      message: string; 
+      status?: number;
+      missing_doc_versions?: string[];
+    };
+
+/**
+ * Handle API error result, including legal acceptance redirect.
+ * SEC: Backend PR #14 (a103f20) - protected routes return 403 with legal_acceptance_required.
+ * Frontend must store missing_doc_versions and redirect to /legal/accept.
+ * 
+ * Call this in components after getting an API error result to handle redirects.
+ */
+export function handleApiError<T>(result: ApiResult<T>): void {
+  if (result.ok) return;
+  
+  if (result.kind === "legal_acceptance_required") {
+    if (result.missing_doc_versions) {
+      storeMissingDocVersions(result.missing_doc_versions);
+    }
+    // Redirect to /legal/accept with current path as return URL
+    if (typeof window !== "undefined") {
+      const currentPath = window.location.pathname + window.location.search;
+      const returnUrl = encodeURIComponent(currentPath);
+      window.location.href = `/legal/accept?return=${returnUrl}`;
+    }
+  }
+}
 
 function getApiBase(): string {
   return (
@@ -17,16 +49,38 @@ function getApiBase(): string {
   );
 }
 
-async function parseErrorMessage(res: Response): Promise<string> {
+async function parseErrorMessage(res: Response): Promise<{
+  message: string;
+  kind?: ApiErrorKind;
+  missing_doc_versions?: string[];
+}> {
   try {
-    const body = (await res.json()) as { message?: string; error?: string };
-    return body.message || body.error || `Erro HTTP ${res.status}`;
+    const body = (await res.json()) as { 
+      message?: string; 
+      error?: string;
+      missing_doc_versions?: string[];
+    };
+    
+    // SEC: Legal 403 gate — when backend returns 403 with legal_acceptance_required,
+    // frontend must redirect to /legal/accept
+    if (res.status === 403 && body.error === "legal_acceptance_required") {
+      return {
+        message: body.message || "Aceitação de termos necessária",
+        kind: "legal_acceptance_required",
+        missing_doc_versions: body.missing_doc_versions,
+      };
+    }
+    
+    return {
+      message: body.message || body.error || `Erro HTTP ${res.status}`,
+    };
   } catch {
-    return `Erro HTTP ${res.status}`;
+    return { message: `Erro HTTP ${res.status}` };
   }
 }
 
-function mapStatusToKind(status: number): ApiErrorKind {
+function mapStatusToKind(status: number, errorKind?: ApiErrorKind): ApiErrorKind {
+  if (errorKind) return errorKind;
   if (status === 401) return "unauthorized";
   if (status === 422) return "validation";
   if (status === 429) return "rate_limit";
@@ -51,12 +105,93 @@ export async function apiPost<T>(
       return { ok: true, data };
     }
 
-    const message = await parseErrorMessage(res);
+    const errorData = await parseErrorMessage(res);
     return {
       ok: false,
-      kind: mapStatusToKind(res.status),
-      message,
+      kind: mapStatusToKind(res.status, errorData.kind),
+      message: errorData.message,
       status: res.status,
+      missing_doc_versions: errorData.missing_doc_versions,
+    };
+  } catch {
+    return {
+      ok: false,
+      kind: "network",
+      message: "Não foi possível conectar ao servidor. Verifique sua conexão.",
+    };
+  }
+}
+
+// SEC: Authenticated API calls require Bearer token from localStorage (DEMO-ONLY)
+// Prod must use httpOnly cookies
+function getAuthHeaders(): HeadersInit {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("origo_access_token");
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
+}
+
+export async function apiGet<T>(path: string): Promise<ApiResult<T>> {
+  const url = `${getApiBase()}${path}`;
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        ...getAuthHeaders(),
+      },
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as T;
+      return { ok: true, data };
+    }
+
+    const errorData = await parseErrorMessage(res);
+    return {
+      ok: false,
+      kind: mapStatusToKind(res.status, errorData.kind),
+      message: errorData.message,
+      status: res.status,
+      missing_doc_versions: errorData.missing_doc_versions,
+    };
+  } catch {
+    return {
+      ok: false,
+      kind: "network",
+      message: "Não foi possível conectar ao servidor. Verifique sua conexão.",
+    };
+  }
+}
+
+export async function apiPostAuth<T>(
+  path: string,
+  body: Record<string, unknown>
+): Promise<ApiResult<T>> {
+  const url = `${getApiBase()}${path}`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as T;
+      return { ok: true, data };
+    }
+
+    const errorData = await parseErrorMessage(res);
+    return {
+      ok: false,
+      kind: mapStatusToKind(res.status, errorData.kind),
+      message: errorData.message,
+      status: res.status,
+      missing_doc_versions: errorData.missing_doc_versions,
     };
   } catch {
     return {
@@ -95,48 +230,32 @@ export function resetPassword(token: string, new_password: string) {
  * P0 SEC (FRONTEND SECURITY CHECKER): Authorization header with Bearer JWT required.
  * No accept without auth.
  */
-async function apiPostAuth<T>(
-  path: string,
-  body: Record<string, unknown>,
-  token: string
-): Promise<ApiResult<T>> {
-  const url = `${getApiBase()}${path}`;
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (res.ok) {
-      const data = (await res.json()) as T;
-      return { ok: true, data };
-    }
-
-    const message = await parseErrorMessage(res);
-    return {
-      ok: false,
-      kind: mapStatusToKind(res.status),
-      message,
-      status: res.status,
-    };
-  } catch {
-    return {
-      ok: false,
-      kind: "network",
-      message: "Não foi possível conectar ao servidor. Verifique sua conexão.",
-    };
-  }
-}
-
 export function acceptLegalDocuments(token: string, docVersions: string[]) {
-  return apiPostAuth<{ message?: string }>(
-    "/api/v1/legal/accept",
-    { docVersions },
-    token
-  );
+  const url = `${getApiBase()}/api/v1/legal/accept`;
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ docVersions }),
+  }).then(async (res) => {
+    if (res.ok) {
+      const data = await res.json();
+      return { ok: true as const, data };
+    }
+    const errorData = await parseErrorMessage(res);
+    return {
+      ok: false as const,
+      kind: mapStatusToKind(res.status, errorData.kind),
+      message: errorData.message,
+      status: res.status,
+      missing_doc_versions: errorData.missing_doc_versions,
+    };
+  }).catch(() => ({
+    ok: false as const,
+    kind: "network" as const,
+    message: "Não foi possível conectar ao servidor. Verifique sua conexão.",
+  }));
 }

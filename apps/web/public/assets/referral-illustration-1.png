@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <!-- Sage/Cream Referral Illustration for beOrigo -->
+  <!-- Brand colors: sage #598c6b, #7da890, cream #f5f5f0, #e5f0e8 -->
+  
+  <!-- Background cream circle -->
+  <circle cx="200" cy="200" r="180" fill="#f5f5f0" opacity="0.9"/>
+  
+  <!-- Abstract connection shape (two hands/people connecting) -->
+  <path d="M120 180 Q140 160 160 165 L160 190 Q155 200 145 205 L120 200 Z" fill="#7da890"/>
+  <path d="M280 180 Q260 160 240 165 L240 190 Q245 200 255 205 L280 200 Z" fill="#7da890"/>
+  
+  <!-- Central connecting element -->
+  <circle cx="200" cy="180" r="45" fill="#e5f0e8"/>
+  <circle cx="200" cy="180" r="25" fill="#598c6b"/>
+  
+  <!-- Botanical flourishes -->
+  <g opacity="0.85">
+    <!-- Left leaves -->
+    <ellipse cx="130" cy="240" rx="18" ry="32" fill="#a8c4b3" transform="rotate(-25 130 240)"/>
+    <ellipse cx="115" cy="220" rx="14" ry="26" fill="#c7dbcc" transform="rotate(-35 115 220)"/>
+    <path d="M110 210 Q115 230 125 245" stroke="#598c6b" stroke-width="2" stroke-linecap="round" fill="none"/>
+    
+    <!-- Right leaves -->
+    <ellipse cx="270" cy="240" rx="18" ry="32" fill="#a8c4b3" transform="rotate(25 270 240)"/>
+    <ellipse cx="285" cy="220" rx="14" ry="26" fill="#c7dbcc" transform="rotate(35 285 220)"/>
+    <path d="M290 210 Q285 230 275 245" stroke="#598c6b" stroke-width="2" stroke-linecap="round" fill="none"/>
+    
+    <!-- Top flourish -->
+    <ellipse cx="200" cy="100" rx="22" ry="35" fill="#c7dbcc" transform="rotate(-10 200 100)"/>
+    <ellipse cx="220" cy="105" rx="18" ry="28" fill="#a8c4b3" transform="rotate(15 220 105)"/>
+    <ellipse cx="180" cy="105" rx="18" ry="28" fill="#e5f0e8" transform="rotate(-15 180 105)"/>
+    
+    <!-- Bottom leaves cluster -->
+    <ellipse cx="200" cy="280" rx="16" ry="28" fill="#7da890"/>
+    <ellipse cx="185" cy="290" rx="14" ry="24" fill="#a8c4b3" transform="rotate(-20 185 290)"/>
+    <ellipse cx="215" cy="290" rx="14" ry="24" fill="#a8c4b3" transform="rotate(20 215 290)"/>
+  </g>
+  
+  <!-- Connection lines (network effect) -->
+  <g opacity="0.5" stroke="#598c6b" stroke-width="1.5" stroke-dasharray="3,3">
+    <line x1="145" y1="200" x2="165" y2="185"/>
+    <line x1="255" y1="200" x2="235" y2="185"/>
+    <line x1="200" y1="155" x2="200" y2="130"/>
+  </g>
+  
+  <!-- Small accent circles (referral network nodes) -->
+  <circle cx="150" cy="150" r="8" fill="#598c6b" opacity="0.7"/>
+  <circle cx="250" cy="150" r="8" fill="#598c6b" opacity="0.7"/>
+  <circle cx="200" cy="250" r="8" fill="#598c6b" opacity="0.7"/>
+  
+  <!-- Decorative outer leaves -->
+  <g opacity="0.6">
+    <path d="M80 140 C90 120 110 125 115 145 C110 135 95 130 80 140 Z" fill="#c7dbcc"/>
+    <path d="M320 140 C310 120 290 125 285 145 C290 135 305 130 320 140 Z" fill="#c7dbcc"/>
+    <path d="M180 320 C185 340 200 345 210 330 C205 335 190 335 180 320 Z" fill="#e5f0e8"/>
+  </g>
+</svg>
