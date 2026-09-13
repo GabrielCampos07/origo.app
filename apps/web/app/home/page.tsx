@@ -458,9 +458,27 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="relative px-6 md:px-20 py-16 md:py-24 flex flex-col items-center gap-8">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#f5f5f0] via-[#f0f5ed] to-[#e5f0e8]" aria-hidden />
-        
+      {/* Hero — vídeo como fundo */}
+      <section className="relative min-h-[88vh] flex flex-col items-center justify-center px-6 md:px-20 py-24 overflow-hidden">
+        <video
+          src="/assets/brand-film.mp4"
+          poster="/assets/brand-film-poster.jpg"
+          className="absolute inset-0 w-full h-full object-cover scale-105"
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-[#f5f5f0]/88 via-[#f0f5ed]/78 to-[#e5f0e8]/90"
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(245,245,240,0.35)_70%)]"
+          aria-hidden
+        />
+
         <div className="relative z-10 flex flex-col items-center gap-8 max-w-3xl text-center">
           <div className="relative w-[min(280px,70vw)] h-[70px] drop-shadow-sm">
             <Image
@@ -496,36 +514,6 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
-
-        <div className="relative z-10 w-full max-w-5xl mt-8">
-          <div className="relative w-full rounded-[24px] overflow-hidden border border-[#d1e5d9] shadow-[0px_16px_40px_-4px_rgba(46,56,51,0.12)]" style={{ aspectRatio: "16/9" }}>
-            <Image
-              src="/assets/hero-image-1.png"
-              alt="beOrigo App"
-              fill
-              className="object-contain p-8 md:p-12"
-              priority
-            />
-          </div>
-        </div>
-      </section>
-
-      <SectionDivider surface="white" />
-
-      <section className="bg-[#f5f5f0] px-6 md:px-20 py-16 flex flex-col items-center gap-6">
-        <div className="relative w-full max-w-5xl rounded-[20px] overflow-hidden bg-[#f0f5ed] border border-[#d1e5d9] shadow-[0px_12px_32px_-4px_rgba(46,56,51,0.1)]" style={{ aspectRatio: "16/9" }}>
-          <video
-            src="/assets/brand-film.mp4"
-            poster="/assets/brand-film-poster.jpg"
-            className="absolute inset-0 w-full h-full object-cover"
-            controls
-            playsInline
-            aria-label="Vídeo de apresentação beOrigo"
-          />
-        </div>
-        <p className="text-sm text-[var(--color-ink-600)] text-center max-w-2xl">
-          Conheça o beOrigo: prescrição clara, adesão visível e continuidade entre consultas.
-        </p>
       </section>
 
       <SectionDivider tone="deep" surface="white" />
@@ -822,13 +810,16 @@ export default function HomePage() {
       <SectionDivider surface="white" />
 
       <section className="relative overflow-hidden px-6 md:px-20 py-28 flex flex-col items-center gap-8">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#e5f0e8] via-[#f0f5ed] to-[#f5f5f0]" aria-hidden />
-        <div
-          className="absolute -left-20 top-10 w-72 h-72 rounded-full bg-[#598c6b]/10 blur-3xl"
+        <Image
+          src="/assets/hero-image-1.png"
+          alt=""
+          fill
+          className="object-cover object-center pointer-events-none select-none"
           aria-hidden
         />
+        <div className="absolute inset-0 bg-[#f5f5f0]/78" aria-hidden />
         <div
-          className="absolute -right-16 bottom-8 w-80 h-80 rounded-full bg-[#7da890]/15 blur-3xl"
+          className="absolute inset-0 bg-gradient-to-b from-[#e5f0e8]/70 via-[#f0f5ed]/55 to-[#f5f5f0]/85"
           aria-hidden
         />
 
@@ -852,8 +843,6 @@ export default function HomePage() {
           </FlowerButton>
         </div>
       </section>
-
-      <SectionDivider surface="sage" />
 
       <footer className="relative overflow-hidden bg-[#2e3833] px-6 md:px-20 py-12 text-white">
         <Image
