@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { PrismaClient } from '@prisma/client';
 import { authRoutes } from './routes/auth';
+import { legalRoutes } from './routes/legal';
 
 const prisma = new PrismaClient({
   log: process.env.LOG_LEVEL === 'debug' ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
@@ -72,6 +73,10 @@ async function start() {
             forgotPassword: 'POST /api/v1/auth/forgot-password',
             resetPassword: 'POST /api/v1/auth/reset-password',
           },
+          legal: {
+            accept: 'POST /api/v1/legal/accept',
+            missing: 'GET /api/v1/legal/missing',
+          },
         },
       };
     });
@@ -79,6 +84,8 @@ async function start() {
     // Register auth routes
     await server.register(authRoutes);
 
+    // Register legal routes (Legal V2)
+    await server.register(legalRoutes);
     const port = parseInt(process.env.PORT || '3001', 10);
     const host = process.env.HOST || '0.0.0.0';
 
