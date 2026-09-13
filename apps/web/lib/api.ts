@@ -70,7 +70,8 @@ export async function apiPost<T>(
 export type LoginResponse = {
   access_token: string;
   refresh_token: string;
-  user: { id: string; email: string };
+  user: { id: string; email: string; role?: "PROFESSIONAL" | "STUDENT" };
+  missing_doc_versions?: string[];
 };
 
 export function login(email: string, password: string) {
@@ -88,4 +89,54 @@ export function resetPassword(token: string, new_password: string) {
     token,
     new_password,
   });
+}
+
+/**
+ * P0 SEC (FRONTEND SECURITY CHECKER): Authorization header with Bearer JWT required.
+ * No accept without auth.
+ */
+async function apiPostAuth<T>(
+  path: string,
+  body: Record<string, unknown>,
+  token: string
+): Promise<ApiResult<T>> {
+  const url = `${getApiBase()}${path}`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as T;
+      return { ok: true, data };
+    }
+
+    const message = await parseErrorMessage(res);
+    return {
+      ok: false,
+      kind: mapStatusToKind(res.status),
+      message,
+      status: res.status,
+    };
+  } catch {
+    return {
+      ok: false,
+      kind: "network",
+      message: "Não foi possível conectar ao servidor. Verifique sua conexão.",
+    };
+  }
+}
+
+export function acceptLegalDocuments(token: string, docVersions: string[]) {
+  return apiPostAuth<{ message?: string }>(
+    "/api/v1/legal/accept",
+    { docVersions },
+    token
+  );
 }
