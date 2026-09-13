@@ -615,7 +615,7 @@ export default function HomePage() {
             Planos
           </h2>
           <p className="font-normal text-lg text-[var(--color-ink-600)]">
-            Escolha o plano que se encaixa no seu atendimento. Trial de 14 dias disponível.
+            Escolha o plano que se encaixa no seu atendimento. Trial de 14 dias · Desconto de <strong>−20% anual</strong> disponível.
           </p>
         </div>
 
@@ -634,8 +634,12 @@ export default function HomePage() {
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto">
           <div className="plan-frame bg-white border border-[#d1e5d9] rounded-2xl p-8 flex flex-col gap-6 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)]">
             <div>
-              <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-4">Start</h3>
-              <p className="font-normal text-sm text-[var(--color-ink-600)] mb-3">Para quem está começando</p>
+              <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Start</h3>
+              <div className="flex items-baseline gap-2 mb-3">
+                <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 49</span>
+                <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
+              </div>
+              <p className="font-normal text-sm text-[var(--color-ink-600)]">Para quem está começando</p>
             </div>
             <ul className="flex flex-col gap-3 text-sm text-[var(--color-ink-600)] flex-1">
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Até 15 alunos ativos</span></li>
@@ -648,10 +652,10 @@ export default function HomePage() {
               asButton
               className="w-full text-base px-5 py-3.5 mt-auto"
               onClick={() => {
-                window.location.href = "mailto:contact@beorigo.app?subject=Interesse%20no%20plano%20Start";
+                window.location.href = "/checkout?plan=start";
               }}
             >
-              Em breve
+              Começar trial de 14 dias
             </FlowerButton>
           </div>
 
@@ -660,8 +664,12 @@ export default function HomePage() {
               Mais popular
             </div>
             <div>
-              <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-4">Pro</h3>
-              <p className="font-normal text-sm text-[var(--color-ink-600)] mb-3">Para atendimento consolidado</p>
+              <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Pro</h3>
+              <div className="flex items-baseline gap-2 mb-3">
+                <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 79</span>
+                <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
+              </div>
+              <p className="font-normal text-sm text-[var(--color-ink-600)]">Para atendimento consolidado</p>
             </div>
             <ul className="flex flex-col gap-3 text-sm text-[var(--color-ink-600)] flex-1">
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Alunos ilimitados</span></li>
@@ -675,17 +683,21 @@ export default function HomePage() {
               asButton
               className="w-full text-base px-5 py-3.5 mt-auto"
               onClick={() => {
-                window.location.href = "mailto:contact@beorigo.app?subject=Interesse%20no%20plano%20Pro";
+                window.location.href = "/checkout?plan=pro";
               }}
             >
-              Em breve
+              Assinar Pro
             </FlowerButton>
           </div>
 
           <div className="plan-frame bg-white border border-[#d1e5d9] rounded-2xl p-8 flex flex-col gap-6 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)]">
             <div>
-              <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-4">Clinic</h3>
-              <p className="font-normal text-sm text-[var(--color-ink-600)] mb-3">Para equipes e clínicas</p>
+              <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Clinic</h3>
+              <div className="flex items-baseline gap-2 mb-3">
+                <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 149</span>
+                <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
+              </div>
+              <p className="font-normal text-sm text-[var(--color-ink-600)]">Para equipes e clínicas</p>
             </div>
             <ul className="flex flex-col gap-3 text-sm text-[var(--color-ink-600)] flex-1">
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Até 3 seats (profissionais)</span></li>
@@ -699,10 +711,10 @@ export default function HomePage() {
               asButton
               className="w-full text-base px-5 py-3.5 mt-auto"
               onClick={() => {
-                window.location.href = "mailto:contact@beorigo.app?subject=Interesse%20no%20plano%20Clinic";
+                window.location.href = "/checkout?plan=clinic";
               }}
             >
-              Falar com time
+              Assinar Clinic
             </FlowerButton>
           </div>
         </div>
