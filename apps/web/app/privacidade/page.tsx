@@ -114,6 +114,12 @@ export default function PrivacidadePage() {
                   <td className="border border-[#d1e5d9] px-4 py-3">Não</td>
                   <td className="border border-[#d1e5d9] px-4 py-3">Sistema</td>
                 </tr>
+                <tr>
+                  <td className="border border-[#d1e5d9] px-4 py-3">Indicação (só PROFESSIONAL)</td>
+                  <td className="border border-[#d1e5d9] px-4 py-3">Código/cupom, vínculo, status</td>
+                  <td className="border border-[#d1e5d9] px-4 py-3">Não</td>
+                  <td className="border border-[#d1e5d9] px-4 py-3">Indicador/Sistema</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -133,6 +139,7 @@ export default function PrivacidadePage() {
             <li><strong>Dor/nota clínica:</strong> Art. 11 I (consentimento específico); Art. 11 II f (tutela da saúde com cautela)</li>
             <li><strong>Guarda CREFITO:</strong> Art. 11 II a quando aplicável (cumprimento de obrigação legal)</li>
             <li><strong>Cobrança SaaS:</strong> Art. 7º V (execução de contrato) / I (consentimento)</li>
+            <li><strong>Programa de indicação:</strong> Art. 7º V (execução de contrato) / I (consentimento)</li>
             <li><strong>Export/exclusão:</strong> Art. 18 (direitos dos titulares)</li>
             <li><strong>Segurança:</strong> Art. 7º VI / IX (legítimo interesse proporcional)</li>
           </ul>
@@ -212,8 +219,33 @@ export default function PrivacidadePage() {
 
         <section>
           <h2 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-4">12. Cookies no app</h2>
+          <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
+            Minimizamos o uso de cookies. O tracking de cupons de indicação utiliza cookies first-party essenciais para vincular o indicador ao indicado.
+          </p>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed">
-            Minimizamos o uso de cookies. Veja a <a href="/cookies" className="text-[var(--brand-primary)] underline hover:no-underline">Política de Cookies</a> do site para detalhes sobre cookies de apresentação.
+            <strong>Não utilizamos</strong> pixels de afiliado de terceiros (3P) no MVP. Veja a <a href="/cookies" className="text-[var(--brand-primary)] underline hover:no-underline">Política de Cookies</a> do site para detalhes sobre cookies de apresentação.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-4">12A. Programa de Indicação</h2>
+          <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
+            Profissionais com conta ativa podem participar do programa de indicação do beOrigo. Tratamos os seguintes dados:
+          </p>
+          <ul className="list-disc list-inside space-y-2 text-base text-[var(--color-ink-700)]">
+            <li><strong>Dados do indicador:</strong> E-mail, nome, código de cupom gerado, histórico de indicações</li>
+            <li><strong>Dados do indicado:</strong> E-mail, nome, cupom usado, vínculo ao indicador, status da assinatura</li>
+            <li><strong>Finalidade:</strong> Executar o programa de indicação (1 mês grátis + comissão de 15% recorrente)</li>
+            <li><strong>Base legal:</strong> Art. 7º V (execução de contrato) e/ou I (consentimento)</li>
+          </ul>
+          <p className="text-base text-[var(--color-ink-700)] leading-relaxed mt-4 mb-3">
+            <strong>Importante:</strong> Dados de indicação <strong>não incluem</strong> dados clínicos dos alunos (VAS, notas clínicas, HEP). Tratamos apenas dados de conta do profissional indicado.
+          </p>
+          <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
+            <strong>Anti-spam:</strong> O programa proíbe spam ou práticas abusivas de indicação. Violações resultam em suspensão do programa e possível encerramento da conta.
+          </p>
+          <p className="text-base text-[var(--color-ink-700)] leading-relaxed">
+            Para detalhes sobre o programa, consulte os <a href="/termos-saas" className="text-[var(--brand-primary)] underline hover:no-underline">Termos SaaS</a>. Dúvidas: privacy@beorigo.com ou contact@beorigo.app.
           </p>
         </section>
 

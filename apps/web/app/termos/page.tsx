@@ -127,7 +127,13 @@ export default function TermosPage() {
         <section>
           <h2 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-4">8. Pagamentos e foro (PROFESSIONAL)</h2>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
-            Detalhes de cobrança são fornecidos no momento da contratação (informação gated até autorização legal para ofertas públicas). Pagamentos via Stripe.
+            O <strong>beOrigo</strong> oferece planos públicos para profissionais: <strong>Start (R$ 49/mês)</strong>, <strong>Pro (R$ 79/mês)</strong> e <strong>Clinic (R$ 149/mês)</strong>, com desconto de −20% na assinatura anual. Trial de 14 dias disponível. Pagamentos processados via <strong>Stripe</strong>.
+          </p>
+          <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
+            O <strong>aluno</strong> (STUDENT) não é cobrado para usar o app vinculado ao profissional.
+          </p>
+          <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
+            Para detalhes contratuais SaaS do profissional, consulte <a href="/termos-saas" className="text-[var(--brand-primary)] underline hover:no-underline">Termos SaaS</a> e <a href="/aviso-pagamentos" className="text-[var(--brand-primary)] underline hover:no-underline">Aviso de Pagamentos</a>.
           </p>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed">
             <strong>Foro exclusivo:</strong> Comarca de São Paulo/SP, Brasil.

@@ -73,7 +73,7 @@ export default function CookiesPage() {
             O site de apresentação <strong>não coleta</strong> dados clínicos (dor VAS, notas clínicas, HEP). Esses dados ficam restritos ao <strong>app beorigo.app</strong> após login.
           </p>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed">
-            <strong>Marketing HOLD:</strong> Durante o período MVP, não implementamos cookies de funil de checkout ou ofertas públicas com preços. Quando o checkout for liberado, esta política será atualizada.
+            <strong>Preços públicos:</strong> O site de apresentação exibe planos e preços (Start, Pro, Clinic) conforme autorizado. Cookies de funil de checkout serão introduzidos somente quando necessário para processar transações, com aviso prévio e atualização desta política.
           </p>
         </section>
 

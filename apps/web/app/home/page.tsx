@@ -395,7 +395,7 @@ export default function HomePage() {
               href="mailto:contact@beorigo.app?subject=Interesse%20em%20beOrigo%20para%20profissionais"
               className="text-base px-5 py-3.5 h-[52px]"
             >
-              Falar com consultor
+              Para profissionais 1:1
             </FlowerButton>
           </nav>
 
@@ -452,7 +452,7 @@ export default function HomePage() {
               href="mailto:contact@beorigo.app?subject=Interesse%20em%20beOrigo%20para%20profissionais"
               className="mt-2 w-full text-base px-5 py-3.5 h-[52px]"
             >
-              Falar com consultor
+              Para profissionais 1:1
             </FlowerButton>
           </nav>
         </div>
@@ -485,7 +485,7 @@ export default function HomePage() {
               href="mailto:contact@beorigo.app?subject=Interesse%20em%20beOrigo%20para%20profissionais"
               className="text-base px-5 py-3.5 h-[52px]"
             >
-              Falar com consultor
+              Para profissionais 1:1
             </FlowerButton>
             <Link
               href="/login"
@@ -508,6 +508,24 @@ export default function HomePage() {
             />
           </div>
         </div>
+      </section>
+
+      <SectionDivider surface="white" />
+
+      <section className="bg-[#f5f5f0] px-6 md:px-20 py-16 flex flex-col items-center gap-6">
+        <div className="relative w-full max-w-5xl rounded-[20px] overflow-hidden bg-[#f0f5ed] border border-[#d1e5d9] shadow-[0px_12px_32px_-4px_rgba(46,56,51,0.1)]" style={{ aspectRatio: "16/9" }}>
+          <video
+            src="/assets/brand-film.mp4"
+            poster="/assets/brand-film-poster.jpg"
+            className="absolute inset-0 w-full h-full object-cover"
+            controls
+            playsInline
+            aria-label="Vídeo de apresentação beOrigo"
+          />
+        </div>
+        <p className="text-sm text-[var(--color-ink-600)] text-center max-w-2xl">
+          Conheça o beOrigo: prescrição clara, adesão visível e continuidade entre consultas.
+        </p>
       </section>
 
       <SectionDivider tone="deep" surface="white" />
@@ -635,9 +653,14 @@ export default function HomePage() {
           <div className="plan-frame bg-white border border-[#d1e5d9] rounded-2xl p-8 flex flex-col gap-6 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)]">
             <div>
               <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Start</h3>
-              <div className="flex items-baseline gap-2 mb-3">
-                <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 49</span>
-                <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
+              <div className="mb-3">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 49</span>
+                  <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
+                </div>
+                <div className="mt-1 text-sm text-[var(--color-ink-600)]">
+                  ou <strong className="text-[var(--color-ink-900)]">R$ 470,40</strong>/ano
+                </div>
               </div>
               <p className="font-normal text-sm text-[var(--color-ink-600)]">Para quem está começando</p>
             </div>
@@ -665,17 +688,18 @@ export default function HomePage() {
             </div>
             <div>
               <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Pro</h3>
-              <div className="flex items-baseline gap-2 mb-3">
+              <div className="flex items-baseline gap-2 mb-1">
                 <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 79</span>
                 <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
               </div>
+              <p className="text-sm text-[var(--color-ink-600)] mb-3">ou R$ 758,40/ano (−20%)</p>
               <p className="font-normal text-sm text-[var(--color-ink-600)]">Para atendimento consolidado</p>
             </div>
             <ul className="flex flex-col gap-3 text-sm text-[var(--color-ink-600)] flex-1">
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Alunos ilimitados</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>HEP ilimitado</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Relatório de adesão avançado</span></li>
-              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Registro clínico completo</span></li>
+              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Registro clínico leve / mínimo</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Suporte prioritário</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Trial 14 dias</span></li>
             </ul>
@@ -693,17 +717,17 @@ export default function HomePage() {
           <div className="plan-frame bg-white border border-[#d1e5d9] rounded-2xl p-8 flex flex-col gap-6 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)]">
             <div>
               <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Clinic</h3>
-              <div className="flex items-baseline gap-2 mb-3">
+              <div className="flex items-baseline gap-2 mb-1">
                 <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 149</span>
                 <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
               </div>
+              <p className="text-sm text-[var(--color-ink-600)] mb-3">ou R$ 1.430,40/ano (−20%)</p>
               <p className="font-normal text-sm text-[var(--color-ink-600)]">Para equipes e clínicas</p>
             </div>
             <ul className="flex flex-col gap-3 text-sm text-[var(--color-ink-600)] flex-1">
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Até 3 seats (profissionais)</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Alunos ilimitados</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Dashboard de gestão</span></li>
-              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Whitelabel (em breve)</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Suporte dedicado</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Trial 14 dias</span></li>
             </ul>
