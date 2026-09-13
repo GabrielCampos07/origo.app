@@ -207,27 +207,26 @@ ORDER BY table_name, privilege_type;
 
 **Integridade de Dados (Database Security Checklist):**
 
-O schema não possui uma constraint CHECK prevenindo auto-referrals (`referrerUserId = referredUserId`).  
-A lógica da aplicação **DEVE** validar isso antes de inserir.
-
-Query de verificação para DBA/auditoria:
+O script adiciona uma constraint CHECK para **prevenir auto-referrals** (`referrerUserId = referredUserId`).  
+Esta constraint é aplicada de forma **idempotente** (safe to re-run).
 
 ```sql
--- Verificar se existem auto-referrals (não deveria retornar nenhuma linha)
-SELECT id, referrerUserId, referredUserId, createdAt
-FROM public.referrals
-WHERE referrerUserId = referredUserId;
-```
-
-**Resultado esperado:** 0 linhas
-
-Se for necessário adicionar uma constraint CHECK no futuro, faça via migration Prisma para manter consistência:
-
-```sql
+-- Constraint adicionada pelo script
 ALTER TABLE public.referrals
 ADD CONSTRAINT referrals_no_self_referral_check
-CHECK (referrerUserId <> referredUserId);
+CHECK ("referrerUserId" <> "referredUserId");
 ```
+
+Query de verificação para DBA/auditoria (deve retornar 0 linhas):
+
+```sql
+-- Verificar se existem auto-referrals (constraint deveria prevenir)
+SELECT id, "referrerUserId", "referredUserId", "createdAt"
+FROM public.referrals
+WHERE "referrerUserId" = "referredUserId";
+```
+
+**Resultado esperado:** 0 linhas (a constraint previne inserção de auto-referrals)
 
 **Contexto Referral MVP:**  
 - Sistema de referral com comissão de 15% para referrer e 1 mês grátis para referred
