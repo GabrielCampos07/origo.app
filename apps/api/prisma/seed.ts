@@ -13,6 +13,7 @@ async function main() {
     create: {
       email: 'prof@origo.dev',
       passwordHash: await hashPassword('OrigoDemoProf1!'),
+      role: 'PROFESSIONAL',
     },
   });
   console.log('✅ Professor user:', prof.email);
@@ -24,6 +25,7 @@ async function main() {
     create: {
       email: 'aluno@origo.dev',
       passwordHash: await hashPassword('OrigoDemoAluno1!'),
+      role: 'STUDENT',
     },
   });
   console.log('✅ Student user:', aluno.email);
