@@ -13,6 +13,16 @@ datasource db {
   extensions = [citext, pgcrypto]
 }
 
+// UserRole enum for MVP session role-aware authorization
+// DATABASE SECURITY NOTES:
+// - role is an authorization attribute, NOT PII
+// - Least privilege unchanged: application logic controls access based on role
+// - No new PII columns introduced in this change
+enum UserRole {
+  PROFESSIONAL
+  STUDENT
+}
+
 // P0 Auth Schema
 // Tokens armazenados APENAS como hash (SHA-256)
 // Purge D8: expired/used reset tokens devem ser removidos via job batch (cron diário recomendado)
@@ -20,6 +30,7 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique @db.Citext
   passwordHash String
+  role         UserRole @default(STUDENT)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
