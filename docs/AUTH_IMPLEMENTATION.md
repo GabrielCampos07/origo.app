@@ -80,6 +80,15 @@ Password reset emails are sent via SMTP (Mailhog in development) with a generic 
 - Includes a 30-minute expiration notice
 - Links to `/reset-password#token=<token>` on the frontend
 - Uses plain text + HTML formats
+- **Email encoding**: HTML content uses base64 encoding to prevent quoted-printable from mangling the `=` character in `#token=` URLs
+
+### Email Encoding Note
+
+When viewing raw email in Mailhog, quoted-printable encoding may display `=3D` instead of `=` in the token URL. This is a display artifact:
+- The HTML link itself works correctly when clicked
+- If copying the raw token manually, decode quoted-printable first (`=3D` → `=`)
+- Frontend should strip any accidental `3D` prefix if users paste malformed tokens
+- The API correctly validates tokens and returns 410 (Gone) for invalid/corrupted tokens
 
 ## Testing
 

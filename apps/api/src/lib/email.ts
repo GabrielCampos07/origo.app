@@ -94,5 +94,6 @@ Este é um email automático, não responda.
     subject: 'Redefinir Senha - Origo',
     text,
     html,
+    encoding: 'base64', // Prevent quoted-printable from mangling = in #token= URL
   });
 }
