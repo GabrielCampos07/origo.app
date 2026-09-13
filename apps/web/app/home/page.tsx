@@ -4,8 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
-const BILLING_LIVE = process.env.NEXT_PUBLIC_BILLING_LIVE === "true";
-
 function FlowerPetal({ className }: { className?: string }) {
   return (
     <svg
@@ -56,7 +54,6 @@ function SectionDivider({
       ? "from-transparent via-[#598c6b]/50 to-transparent"
       : "from-transparent via-[#7da890]/45 to-transparent";
 
-  // Só o pill muda — a faixa permanece sem fundo próprio
   const pill =
     surface === "white"
       ? "bg-white border-[#c7dbcc]/70 shadow-[0_4px_14px_-4px_rgba(46,56,51,0.14)]"
@@ -206,17 +203,17 @@ function ComoFuncionaSteps() {
     {
       n: "01",
       title: "Prescreve",
-      body: "Profissional cria programa (sessões + exercícios) ou treino semanal no app.",
+      body: "Profissional cria programa HEP com sessões e exercícios no app — prescrição clara.",
     },
     {
       n: "02",
-      title: "Aluno executa",
-      body: "Paciente/aluno acessa HEP, sabe o que fazer hoje, reporta sessão feita com dor e observações.",
+      title: "Executa e reporta",
+      body: "Aluno acessa HEP, sabe o que fazer hoje, completa sessão e reporta dor e observações.",
     },
     {
       n: "03",
-      title: "Acompanha",
-      body: "Profissional vê adesão em tempo real, registra evolução mínima — continuidade clara.",
+      title: "Vê adesão e ajusta",
+      body: "Profissional acompanha adesão em tempo real, registra evolução leve e ajusta programa.",
     },
   ] as const;
 
@@ -225,7 +222,6 @@ function ComoFuncionaSteps() {
 
   return (
     <div className="steps-flow relative w-full pt-4">
-      {/* Trilho de progresso — desktop (alinhado aos círculos) */}
       <div className="hidden md:block absolute top-[5.75rem] left-[16.5%] right-[16.5%] h-1.5 rounded-full bg-[#d1e5d9] z-0 overflow-hidden">
         <div
           className="h-full rounded-full bg-gradient-to-r from-[#598c6b] via-[#7da890] to-[#a8c4b3] transition-[width] duration-300 ease-out"
@@ -233,7 +229,6 @@ function ComoFuncionaSteps() {
         />
       </div>
 
-      {/* Trilho — mobile (vertical) */}
       <div className="md:hidden absolute left-[2.65rem] top-20 bottom-12 w-1.5 rounded-full bg-[#d1e5d9] z-0 overflow-hidden">
         <div
           className="w-full rounded-full bg-gradient-to-b from-[#598c6b] via-[#7da890] to-[#a8c4b3] transition-[height] duration-300 ease-out"
@@ -274,7 +269,6 @@ function ComoFuncionaSteps() {
                     : "bg-white/80 border-[#c7dbcc] opacity-85 shadow-[0px_8px_18px_-4px_rgba(46,56,51,0.06)]",
               ].join(" ")}
             >
-              {/* Selo no topo do card (fora do fluxo do conteúdo) */}
               <span
                 className={[
                   "absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-1/2",
@@ -363,10 +357,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[var(--color-green-50)]">
-      {/* Header */}
       <header className="sticky top-0 z-30 bg-[var(--color-green-50)]/95 backdrop-blur-md border-b border-[#d1e5d9]/40">
         <div className="flex items-center justify-between px-5 md:px-20 py-3 md:py-5 gap-4">
-          <Link href="/" className="relative h-11 w-[160px] sm:h-14 sm:w-[200px] md:h-16 md:w-[260px] shrink-0 cursor-pointer">
+          <Link href="/home" className="relative h-11 w-[160px] sm:h-14 sm:w-[200px] md:h-16 md:w-[260px] shrink-0 cursor-pointer">
             <Image
               src="/assets/logo-lockup.png"
               alt="beOrigo"
@@ -465,28 +458,13 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero — vídeo como fundo */}
-      <section className="relative min-h-[88vh] flex flex-col items-center justify-center px-6 md:px-20 py-24 overflow-hidden">
-        <video
-          src="/assets/brand-film.mp4"
-          poster="/assets/brand-film-poster.jpg"
-          className="absolute inset-0 w-full h-full object-cover scale-105"
-          autoPlay
-          muted
-          loop
-          playsInline
-          aria-hidden
-        />
-        <div
-          className="absolute inset-0 bg-gradient-to-b from-[#f5f5f0]/88 via-[#f0f5ed]/78 to-[#e5f0e8]/90"
-          aria-hidden
-        />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(245,245,240,0.35)_70%)]" aria-hidden />
-
+      <section className="relative px-6 md:px-20 py-16 md:py-24 flex flex-col items-center gap-8">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#f5f5f0] via-[#f0f5ed] to-[#e5f0e8]" aria-hidden />
+        
         <div className="relative z-10 flex flex-col items-center gap-8 max-w-3xl text-center">
-          <div className="relative w-[min(320px,78vw)] h-[80px] drop-shadow-sm">
+          <div className="relative w-[min(280px,70vw)] h-[70px] drop-shadow-sm">
             <Image
-              src="/assets/logo-wordmark.png"
+              src="/assets/logo-lockup.png"
               alt="beOrigo"
               fill
               className="object-contain"
@@ -494,13 +472,12 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="font-semibold text-[26px] md:text-[30px] text-[#2e3833]">
-            <p className="leading-[36px] mb-0">Prescrição clara. Adesão visível.</p>
-            <p className="leading-[36px]">Continuidade entre consultas.</p>
-          </div>
+          <h1 className="font-semibold text-[26px] md:text-[32px] text-[#2e3833] leading-[1.35]">
+            Prescrição clara. Adesão visível. Continuidade entre consultas.
+          </h1>
 
-          <p className="font-normal text-base md:text-lg text-[#3d4740] max-w-2xl">
-            O profissional monta o HEP; o aluno sabe o que fazer hoje e reporta; o pro vê adesão e registra evolução mínima.
+          <p className="font-normal text-base md:text-lg text-[#3d4740] max-w-2xl leading-relaxed">
+            O profissional monta o HEP; o aluno sabe o que fazer hoje e reporta; o pro vê adesão e registra evolução mínima — continuidade humana e precisa.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -519,84 +496,87 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
+
+        <div className="relative z-10 w-full max-w-5xl mt-8">
+          <div className="relative w-full rounded-[24px] overflow-hidden border border-[#d1e5d9] shadow-[0px_16px_40px_-4px_rgba(46,56,51,0.12)]" style={{ aspectRatio: "16/9" }}>
+            <Image
+              src="/assets/hero-image-1.png"
+              alt="beOrigo App"
+              fill
+              className="object-contain p-8 md:p-12"
+              priority
+            />
+          </div>
+        </div>
       </section>
 
-      <SectionDivider tone="deep" surface="sage" />
+      <SectionDivider surface="white" />
 
-      {/* Pain */}
-      <section className="bg-white px-6 md:px-20 py-20 flex flex-col gap-5 scroll-mt-24">
+      <section className="bg-[#f5f5f0] px-6 md:px-20 py-16 flex flex-col items-center gap-6">
+        <div className="relative w-full max-w-5xl rounded-[20px] overflow-hidden bg-[#f0f5ed] border border-[#d1e5d9] shadow-[0px_12px_32px_-4px_rgba(46,56,51,0.1)]" style={{ aspectRatio: "16/9" }}>
+          <video
+            src="/assets/brand-film.mp4"
+            poster="/assets/brand-film-poster.jpg"
+            className="absolute inset-0 w-full h-full object-cover"
+            controls
+            playsInline
+            aria-label="Vídeo de apresentação beOrigo"
+          />
+        </div>
+        <p className="text-sm text-[var(--color-ink-600)] text-center max-w-2xl">
+          Conheça o beOrigo: prescrição clara, adesão visível e continuidade entre consultas.
+        </p>
+      </section>
+
+      <SectionDivider tone="deep" surface="white" />
+
+      <section className="bg-white px-6 md:px-20 py-20 flex flex-col gap-6">
         <h2 className="font-semibold text-[32px] text-[var(--color-ink-900)] leading-normal">
           Entre consultas, a adesão some
         </h2>
-        <div className="font-normal text-lg text-[var(--color-ink-600)]">
-          <p className="mb-0">• O PDF some no WhatsApp</p>
-          <p className="mb-0">• Apps genéricos não mostram se o aluno fez</p>
+        <div className="font-normal text-lg text-[var(--color-ink-600)] space-y-2">
+          <p>• O PDF some no WhatsApp</p>
+          <p>• Apps genéricos não mostram se o aluno fez</p>
           <p>• Planilha sem registro clínico leve</p>
         </div>
       </section>
 
       <SectionDivider surface="cream" />
 
-      {/* Continuidade */}
       <section className="bg-gradient-to-b from-[#e5f0e8] to-[#f5f5f0] px-6 md:px-20 py-20 flex flex-col gap-6">
         <h2 className="font-semibold text-[32px] text-[var(--color-ink-900)] leading-normal">
           Continuidade humana e precisa
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
-          <div className="relative bg-white border-[1.5px] border-[#c7dbcc] rounded-2xl p-7 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)] flex flex-col gap-3 min-h-[220px] overflow-hidden">
-            <div
-              className="absolute inset-0 pointer-events-none select-none bg-[url('/assets/card-frame-leaves.png')] bg-center bg-[length:100%_100%] mix-blend-multiply"
-              aria-hidden
-            />
-            <div className="relative z-10 flex flex-col gap-3">
-              <div className="bg-[#598c6b] h-1 w-10 rounded" />
-              <h3 className="font-semibold text-lg text-[var(--color-ink-900)]">HEP do aluno</h3>
-              <p className="font-normal text-sm text-[var(--color-ink-600)]">
-                Programa, sessão, dor e progresso — claro o que fazer hoje.
-              </p>
-            </div>
+          <div className="relative bg-white border-[1.5px] border-[#c7dbcc] rounded-2xl p-7 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)] flex flex-col gap-3 min-h-[200px]">
+            <div className="bg-[#598c6b] h-1 w-10 rounded" />
+            <h3 className="font-semibold text-lg text-[var(--color-ink-900)]">HEP do aluno</h3>
+            <p className="font-normal text-sm text-[var(--color-ink-600)]">
+              Programa, sessão, dor e progresso — claro o que fazer hoje.
+            </p>
           </div>
 
-          <div className="relative bg-white border-[1.5px] border-[#c7dbcc] rounded-2xl p-7 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)] flex flex-col gap-3 min-h-[220px] overflow-hidden">
-            <Image
-              src="/assets/theme-adesao.png"
-              alt=""
-              fill
-              className="object-cover opacity-40 pointer-events-none select-none"
-              aria-hidden
-            />
-            <div className="relative z-10 flex flex-col gap-3">
-              <div className="bg-[#598c6b] h-1 w-10 rounded" />
-              <h3 className="font-semibold text-lg text-[var(--color-ink-900)]">Adesão visível</h3>
-              <p className="font-normal text-sm text-[var(--color-ink-600)]">
-                Aluno reporta sessão feita (dor, observações) — você vê.
-              </p>
-            </div>
+          <div className="relative bg-white border-[1.5px] border-[#c7dbcc] rounded-2xl p-7 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)] flex flex-col gap-3 min-h-[200px]">
+            <div className="bg-[#598c6b] h-1 w-10 rounded" />
+            <h3 className="font-semibold text-lg text-[var(--color-ink-900)]">Adesão visível</h3>
+            <p className="font-normal text-sm text-[var(--color-ink-600)]">
+              Aluno reporta sessão feita (dor, observações) — você vê em tempo real.
+            </p>
           </div>
 
-          <div className="relative bg-white border-[1.5px] border-[#c7dbcc] rounded-2xl p-7 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)] flex flex-col gap-3 min-h-[220px] overflow-hidden">
-            <Image
-              src="/assets/theme-evolucao.png"
-              alt=""
-              fill
-              className="object-cover opacity-45 pointer-events-none select-none"
-              aria-hidden
-            />
-            <div className="relative z-10 flex flex-col gap-3">
-              <div className="bg-[#598c6b] h-1 w-10 rounded" />
-              <h3 className="font-semibold text-lg text-[var(--color-ink-900)]">Evolução registrada</h3>
-              <p className="font-normal text-sm text-[var(--color-ink-600)]">
-                Registro clínico mínimo sem planilha — sessão e progresso salvos.
-              </p>
-            </div>
+          <div className="relative bg-white border-[1.5px] border-[#c7dbcc] rounded-2xl p-7 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)] flex flex-col gap-3 min-h-[200px]">
+            <div className="bg-[#598c6b] h-1 w-10 rounded" />
+            <h3 className="font-semibold text-lg text-[var(--color-ink-900)]">Chart e nota leves</h3>
+            <p className="font-normal text-sm text-[var(--color-ink-600)]">
+              Registro clínico mínimo sem planilha — sessão e progresso salvos.
+            </p>
           </div>
         </div>
       </section>
 
       <SectionDivider tone="deep" surface="white" />
 
-      {/* Como funciona — etapas progressivas */}
-      <section id="como-funciona" className="bg-gradient-to-b from-[#f0f5ed] to-[#e5f0e8] px-6 md:px-20 py-20 flex flex-col gap-10 scroll-mt-24">
+      <section id="como-funciona" className="bg-[var(--color-green-50)] px-6 md:px-20 py-20 flex flex-col gap-10 scroll-mt-24">
         <div className="max-w-2xl">
           <h2 className="font-semibold text-[32px] text-[var(--color-ink-900)] leading-normal mb-2">
             Como funciona
@@ -606,46 +586,43 @@ export default function HomePage() {
           </p>
         </div>
         <ComoFuncionaSteps />
+        
+        <div className="relative min-h-[320px] md:min-h-[400px] rounded-[24px] overflow-hidden border border-[#d1e5d9] shadow-[0px_16px_40px_-4px_rgba(46,56,51,0.1)] mt-6">
+          <Image
+            src="/assets/hero-image-2.png"
+            alt="Visão do profissional no beOrigo"
+            fill
+            className="object-contain p-8"
+          />
+        </div>
       </section>
 
       <SectionDivider surface="white" />
 
-      {/* Para quem — com hero-image-2 */}
-      <section id="para-quem" className="bg-[var(--color-green-50)] px-6 md:px-20 py-20 flex flex-col gap-8 scroll-mt-24">
+      <section id="para-quem" className="bg-white px-6 md:px-20 py-20 flex flex-col gap-8 scroll-mt-24">
         <h2 className="font-semibold text-[32px] text-[var(--color-ink-900)] leading-normal">
           Para quem
         </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-          <div className="flex flex-col gap-5">
-            <div className="bg-white border-[1.5px] border-[#c7dbcc] rounded-2xl p-7 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)] flex flex-col gap-3 flex-1">
-              <div className="bg-[#598c6b] h-1 w-10 rounded" />
-              <h3 className="font-semibold text-xl text-[var(--color-ink-900)]">Fisioterapeutas</h3>
-              <p className="font-normal text-base text-[var(--color-ink-600)]">
-                Prescreve HEP (sessões/exercícios), acompanha adesão do paciente entre consultas, registra evolução — tudo num só lugar.
-              </p>
-            </div>
-            <div className="bg-white border-[1.5px] border-[#c7dbcc] rounded-2xl p-7 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)] flex flex-col gap-3 flex-1">
-              <div className="bg-[#598c6b] h-1 w-10 rounded" />
-              <h3 className="font-semibold text-xl text-[var(--color-ink-900)]">Personal Trainers</h3>
-              <p className="font-normal text-base text-[var(--color-ink-600)]">
-                Monta treino semanal, aluno reporta sessão feita, você vê progresso e ajusta — vínculo 1:1 fortalecido.
-              </p>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+          <div className="bg-[#e5f0e8] border-[1.5px] border-[#c7dbcc] rounded-2xl p-8 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)] flex flex-col gap-4">
+            <div className="bg-[#598c6b] h-1 w-10 rounded" />
+            <h3 className="font-semibold text-xl text-[var(--color-ink-900)]">Profissional 1:1</h3>
+            <p className="font-normal text-base text-[var(--color-ink-600)] leading-relaxed">
+              Fisioterapeutas, personal trainers e profissionais de saúde que prescrevem HEP e acompanham adesão na relação 1:1 com seus alunos ou pacientes.
+            </p>
           </div>
-          <div className="relative min-h-[320px] rounded-[24px] overflow-hidden border border-[#d1e5d9] shadow-[0px_16px_40px_-4px_rgba(46,56,51,0.1)]">
-            <Image
-              src="/assets/hero-image-2.png"
-              alt="Visão do profissional no beOrigo"
-              fill
-              className="object-cover"
-            />
+          <div className="bg-white border-[1.5px] border-[#c7dbcc] rounded-2xl p-8 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)] flex flex-col gap-4">
+            <div className="bg-[#598c6b] h-1 w-10 rounded" />
+            <h3 className="font-semibold text-xl text-[var(--color-ink-900)]">Aluno</h3>
+            <p className="font-normal text-base text-[var(--color-ink-600)] leading-relaxed">
+              Pacientes e alunos que recebem programa HEP do profissional, executam em casa e reportam progresso e dor — continuidade clara.
+            </p>
           </div>
         </div>
       </section>
 
       <SectionDivider tone="deep" surface="sage" />
 
-      {/* Planos */}
       <section id="planos" className="relative overflow-hidden bg-gradient-to-b from-[#e5f0e8] to-[#f5f5f0] px-6 md:px-20 py-20 flex flex-col gap-10 scroll-mt-24">
         <div
           className="absolute inset-0 pointer-events-none select-none bg-[url('/assets/card-frame-leaves.png')] bg-center bg-[length:100%_100%] opacity-40 mix-blend-multiply"
@@ -656,35 +633,52 @@ export default function HomePage() {
             Planos
           </h2>
           <p className="font-normal text-lg text-[var(--color-ink-600)]">
-            Escolha o plano que se encaixa no seu atendimento
+            Escolha o plano que se encaixa no seu atendimento. Trial de 14 dias · Desconto de <strong>−20% anual</strong> disponível.
           </p>
+        </div>
+
+        <div className="relative z-10 flex justify-center mb-6">
+          <div className="relative w-[min(400px,90vw)] h-[200px]">
+            <Image
+              src="/assets/pricing-illustration-1.png"
+              alt=""
+              fill
+              className="object-contain"
+              aria-hidden
+            />
+          </div>
         </div>
 
         <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto">
           <div className="plan-frame bg-white border border-[#d1e5d9] rounded-2xl p-8 flex flex-col gap-6 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)]">
             <div>
               <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Start</h3>
-              <div className="flex items-baseline gap-2 mb-4">
-                <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 49</span>
-                <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
+              <div className="mb-3">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 49</span>
+                  <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
+                </div>
+                <div className="mt-1 text-sm text-[var(--color-ink-600)]">
+                  ou <strong className="text-[var(--color-ink-900)]">R$ 470,40</strong>/ano
+                </div>
               </div>
               <p className="font-normal text-sm text-[var(--color-ink-600)]">Para quem está começando</p>
             </div>
             <ul className="flex flex-col gap-3 text-sm text-[var(--color-ink-600)] flex-1">
-              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Até 10 alunos ativos</span></li>
+              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Até 15 alunos ativos</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>HEP ilimitado</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Relatório de adesão</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Registro clínico mínimo</span></li>
+              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Trial 14 dias</span></li>
             </ul>
             <FlowerButton
               asButton
-              disabled={!BILLING_LIVE}
-              className="w-full text-base px-5 py-3.5"
+              className="w-full text-base px-5 py-3.5 mt-auto"
               onClick={() => {
-                if (BILLING_LIVE) window.location.href = "/checkout?plan=start";
+                window.location.href = "/checkout?plan=start";
               }}
             >
-              {BILLING_LIVE ? "Assinar Start" : "Em breve"}
+              Começar trial de 14 dias
             </FlowerButton>
           </div>
 
@@ -694,56 +688,57 @@ export default function HomePage() {
             </div>
             <div>
               <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Pro</h3>
-              <div className="flex items-baseline gap-2 mb-4">
+              <div className="flex items-baseline gap-2 mb-1">
                 <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 79</span>
                 <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
               </div>
+              <p className="text-sm text-[var(--color-ink-600)] mb-3">ou R$ 758,40/ano (−20%)</p>
               <p className="font-normal text-sm text-[var(--color-ink-600)]">Para atendimento consolidado</p>
             </div>
             <ul className="flex flex-col gap-3 text-sm text-[var(--color-ink-600)] flex-1">
-              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Até 30 alunos ativos</span></li>
+              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Alunos ilimitados</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>HEP ilimitado</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Relatório de adesão avançado</span></li>
-              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Registro clínico completo</span></li>
+              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Registro clínico leve / mínimo</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Suporte prioritário</span></li>
+              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Trial 14 dias</span></li>
             </ul>
             <FlowerButton
               asButton
-              disabled={!BILLING_LIVE}
-              className="w-full text-base px-5 py-3.5"
+              className="w-full text-base px-5 py-3.5 mt-auto"
               onClick={() => {
-                if (BILLING_LIVE) window.location.href = "/checkout?plan=pro";
+                window.location.href = "/checkout?plan=pro";
               }}
             >
-              {BILLING_LIVE ? "Assinar Pro" : "Em breve"}
+              Assinar Pro
             </FlowerButton>
           </div>
 
           <div className="plan-frame bg-white border border-[#d1e5d9] rounded-2xl p-8 flex flex-col gap-6 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)]">
             <div>
-              <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Clínica</h3>
-              <div className="flex items-baseline gap-2 mb-4">
+              <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Clinic</h3>
+              <div className="flex items-baseline gap-2 mb-1">
                 <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 149</span>
                 <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
               </div>
+              <p className="text-sm text-[var(--color-ink-600)] mb-3">ou R$ 1.430,40/ano (−20%)</p>
               <p className="font-normal text-sm text-[var(--color-ink-600)]">Para equipes e clínicas</p>
             </div>
             <ul className="flex flex-col gap-3 text-sm text-[var(--color-ink-600)] flex-1">
+              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Até 3 seats (profissionais)</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Alunos ilimitados</span></li>
-              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Múltiplos profissionais</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Dashboard de gestão</span></li>
-              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Whitelabel (em breve)</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Suporte dedicado</span></li>
+              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Trial 14 dias</span></li>
             </ul>
             <FlowerButton
               asButton
-              disabled={!BILLING_LIVE}
-              className="w-full text-base px-5 py-3.5"
+              className="w-full text-base px-5 py-3.5 mt-auto"
               onClick={() => {
-                if (BILLING_LIVE) window.location.href = "/checkout?plan=clinic";
+                window.location.href = "/checkout?plan=clinic";
               }}
             >
-              {BILLING_LIVE ? "Falar com time" : "Em breve"}
+              Assinar Clinic
             </FlowerButton>
           </div>
         </div>
@@ -758,7 +753,6 @@ export default function HomePage() {
 
       <SectionDivider surface="white" />
 
-      {/* CTA final — mais vida */}
       <section className="relative overflow-hidden px-6 md:px-20 py-28 flex flex-col items-center gap-8">
         <div className="absolute inset-0 bg-gradient-to-b from-[#e5f0e8] via-[#f0f5ed] to-[#f5f5f0]" aria-hidden />
         <div
@@ -769,9 +763,6 @@ export default function HomePage() {
           className="absolute -right-16 bottom-8 w-80 h-80 rounded-full bg-[#7da890]/15 blur-3xl"
           aria-hidden
         />
-        <div className="absolute inset-x-0 bottom-0 h-1/2 opacity-[0.12] pointer-events-none" aria-hidden>
-          <Image src="/assets/theme-evolucao.png" alt="" fill className="object-cover object-bottom" />
-        </div>
 
         <div className="relative z-10 flex flex-col items-center gap-6 text-center max-w-3xl">
           <div className="inline-flex items-center gap-2 text-sm font-medium text-[var(--brand-primary)] bg-white/70 border border-[#c7dbcc] rounded-full px-4 py-1.5">
@@ -779,10 +770,10 @@ export default function HomePage() {
             Continuidade 1:1
           </div>
           <h2 className="font-semibold text-[40px] md:text-[44px] text-[var(--color-ink-900)] leading-tight">
-            Comece clara. Programe contínuo.
+            Começo claro. Progresso contínuo.
           </h2>
-          <p className="font-normal text-lg text-[var(--color-ink-600)] max-w-2xl">
-            Agende uma conversa com nosso time e veja como o beOrigo pode transformar seu atendimento 1:1.
+          <p className="font-normal text-lg text-[var(--color-ink-600)] max-w-2xl leading-relaxed">
+            Agende uma conversa com nosso time e veja como o beOrigo transforma a relação profissional-aluno através de HEP estruturado, adesão visível e registro leve.
           </p>
           <FlowerButton
             href="mailto:contact@beorigo.app?subject=Solicita%C3%A7%C3%A3o%20de%20consulta%201:1%20-%20beOrigo"
@@ -796,7 +787,6 @@ export default function HomePage() {
 
       <SectionDivider surface="sage" />
 
-      {/* Footer */}
       <footer className="relative overflow-hidden bg-[#2e3833] px-6 md:px-20 py-12 text-white">
         <Image
           src="/assets/footer-forest.png"
@@ -807,53 +797,61 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 bg-[#2e3833]/55 pointer-events-none" aria-hidden />
 
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start gap-10 max-w-6xl mx-auto">
-          <div className="flex flex-col gap-4">
-            <Link href="/" className="relative h-11 w-[200px] cursor-pointer">
-              <Image
-                src="/assets/logo-lockup.png"
-                alt="beOrigo"
-                fill
-                className="object-contain object-left"
-              />
+        <div className="relative z-10 flex flex-col items-center gap-6 max-w-4xl mx-auto text-center">
+          <Link href="/home" className="relative h-11 w-[200px] cursor-pointer">
+            <Image
+              src="/assets/logo-lockup.png"
+              alt="beOrigo"
+              fill
+              className="object-contain"
+            />
+          </Link>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 text-sm text-white/70">
+            <Link href="/privacidade" className="hover:text-white transition-colors">
+              Privacidade
             </Link>
-            <p className="text-sm text-white/70 max-w-xs">
-              Continuidade entre consultas. HEP 1:1 para fisioterapeutas e personal trainers.
-            </p>
+            <span className="opacity-50">·</span>
+            <Link href="/termos" className="hover:text-white transition-colors">
+              Termos
+            </Link>
+            <span className="opacity-50">·</span>
+            <Link href="/cookies" className="hover:text-white transition-colors">
+              Cookies
+            </Link>
+            <span className="opacity-50">·</span>
+            <Link href="/dpa" className="hover:text-white transition-colors">
+              DPA
+            </Link>
+            <span className="opacity-50">·</span>
+            <a href="mailto:contact@beorigo.app" className="hover:text-white transition-colors">
+              contact@beorigo.app
+            </a>
           </div>
 
-          <div className="flex flex-wrap gap-16">
-            <div className="flex flex-col gap-3">
-              <h3 className="font-semibold text-sm text-white mb-1">Produto</h3>
-              <button type="button" onClick={() => scrollToId("como-funciona")} className="cursor-pointer text-left text-sm text-white/70 hover:text-white transition-colors">Como funciona</button>
-              <button type="button" onClick={() => scrollToId("para-quem")} className="cursor-pointer text-left text-sm text-white/70 hover:text-white transition-colors">Para quem</button>
-              <button type="button" onClick={() => scrollToId("planos")} className="cursor-pointer text-left text-sm text-white/70 hover:text-white transition-colors">Planos</button>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <h3 className="font-semibold text-sm text-white mb-1">Empresa</h3>
-              <a href="mailto:contact@beorigo.app" className="cursor-pointer text-sm text-white/70 hover:text-white transition-colors">Contato</a>
-              <a href="/privacidade" className="cursor-pointer text-sm text-white/70 hover:text-white transition-colors">Privacidade</a>
-              <a href="/termos" className="cursor-pointer text-sm text-white/70 hover:text-white transition-colors">Termos de uso</a>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <h3 className="font-semibold text-sm text-white mb-1">Redes sociais</h3>
-              <div className="flex gap-3 items-center">
-                <a href="https://instagram.com/beorigo" target="_blank" rel="noopener noreferrer" className="cursor-pointer opacity-70 hover:opacity-100 transition-opacity">
-                  <Image src="/assets/social-icon-1.svg" alt="Instagram" width={24} height={24} />
-                </a>
-                <a href="https://linkedin.com/company/beorigo" target="_blank" rel="noopener noreferrer" className="cursor-pointer opacity-70 hover:opacity-100 transition-opacity">
-                  <Image src="/assets/social-icon-2.svg" alt="LinkedIn" width={24} height={24} />
-                </a>
-              </div>
-            </div>
+          <div className="flex gap-4 items-center mt-2">
+            <a
+              href="https://instagram.com/beorigo"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="opacity-70 hover:opacity-100 transition-opacity"
+              aria-label="Instagram"
+            >
+              <Image src="/assets/social-icon-1.svg" alt="Instagram" width={24} height={24} />
+            </a>
+            <a
+              href="https://linkedin.com/company/beorigo"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="opacity-70 hover:opacity-100 transition-opacity"
+              aria-label="LinkedIn"
+            >
+              <Image src="/assets/social-icon-2.svg" alt="LinkedIn" width={24} height={24} />
+            </a>
           </div>
-        </div>
 
-        <div className="relative z-10 border-t border-white/10 mt-8 pt-8 text-center">
-          <p className="text-sm text-white/50">
-            © 2024 beOrigo. Todos os direitos reservados.
+          <p className="text-sm text-white/50 mt-4">
+            © 2026 beOrigo. Todos os direitos reservados.
           </p>
         </div>
       </footer>
