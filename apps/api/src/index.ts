@@ -4,6 +4,8 @@ import rateLimit from '@fastify/rate-limit';
 import { PrismaClient } from '@prisma/client';
 import { authRoutes } from './routes/auth';
 import { legalRoutes, REQUIRED_DOCS_ALL_USERS, REQUIRED_DOCS_PROFESSIONAL } from './routes/legal';
+import { referralRoutes } from './routes/referrals';
+import { stripeWebhookRoutes } from './routes/stripe-webhook';
 import { verifyAccessToken } from './lib/jwt';
 
 const prisma = new PrismaClient({
@@ -26,6 +28,7 @@ const server = Fastify({
       },
     },
   },
+  bodyLimit: 1048576, // 1MB
 });
 
 async function start() {
@@ -40,6 +43,26 @@ async function start() {
       timeWindow: '15 minutes',
       redis: undefined,
     });
+
+    // SECURITY: Custom content type parser for Stripe webhook to preserve raw body bytes
+    // This is ONLY for /api/v1/webhooks/stripe route for signature verification
+    // Stripe signs the exact raw bytes, so we cannot use parsed JSON
+    server.addContentTypeParser(
+      'application/json',
+      { parseAs: 'buffer' },
+      async (request: any, rawBody: Buffer) => {
+        // Store raw body for Stripe webhook signature verification
+        request.rawBody = rawBody;
+        
+        // Parse JSON for normal request handling
+        try {
+          return JSON.parse(rawBody.toString('utf8'));
+        } catch (error) {
+          // Let Fastify handle JSON parse errors
+          throw error;
+        }
+      }
+    );
 
     // Health endpoint (não autenticado)
     server.get('/health', async (request, reply) => {
@@ -78,6 +101,14 @@ async function start() {
             accept: 'POST /api/v1/legal/accept',
             missing: 'GET /api/v1/legal/missing',
           },
+          referrals: {
+            code: 'GET /api/v1/referrals/code',
+            status: 'GET /api/v1/referrals/status',
+            validate: 'POST /api/v1/referrals/validate',
+          },
+          webhooks: {
+            stripe: 'POST /api/v1/webhooks/stripe',
+          },
         },
       };
     });
@@ -87,6 +118,12 @@ async function start() {
 
     // Register legal routes (Legal V2)
     await server.register(legalRoutes);
+
+    // Register referral routes (Referral MVP)
+    await server.register(referralRoutes);
+
+    // Register Stripe webhook routes (Referral MVP payouts)
+    await server.register(stripeWebhookRoutes);
 
     // Legal acceptance enforcement middleware (403 if missing required docs)
     // BACKEND SECURITY: Criteria enforced
@@ -108,6 +145,8 @@ async function start() {
         '/api/v1/auth/reset-password',
         '/api/v1/legal/accept',
         '/api/v1/legal/missing',
+        '/api/v1/referrals/validate',
+        '/api/v1/webhooks/stripe',
       ];
 
       // Extract path without query parameters (prevent bypass via ?foo=bar)
