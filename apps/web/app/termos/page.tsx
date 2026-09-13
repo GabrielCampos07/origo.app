@@ -60,10 +60,10 @@ export default function TermosPage() {
         <section>
           <h2 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-4">3. Planos e pagamento (PROFESSIONAL)</h2>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
-            Os detalhes comerciais (valores, formas de pagamento, trial) são fornecidos diretamente ao profissional durante a contratação. Informações públicas de marketing podem estar indisponíveis até autorização legal final.
+            O beOrigo oferece planos públicos: <strong>Start (R$ 49/mês)</strong>, <strong>Pro (R$ 79/mês)</strong> e <strong>Clinic (R$ 149/mês)</strong>, com desconto de −20% na assinatura anual. Trial de 14 dias disponível.
           </p>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed">
-            Pagamentos processados via <strong>Stripe</strong>. Cancelamento e reembolso seguem política específica comunicada no momento da contratação.
+            Pagamentos processados via <strong>Stripe</strong>. Para detalhes contratuais SaaS, consulte <a href="/termos-saas" className="text-[var(--brand-primary)] underline hover:no-underline">Termos SaaS</a> e <a href="/aviso-pagamentos" className="text-[var(--brand-primary)] underline hover:no-underline">Aviso de Pagamentos</a>.
           </p>
         </section>
 
@@ -125,15 +125,12 @@ export default function TermosPage() {
         </section>
 
         <section>
-          <h2 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-4">8. Pagamentos e foro (PROFESSIONAL)</h2>
+          <h2 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-4">8. Quem paga (PROFESSIONAL vs STUDENT)</h2>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
-            O <strong>beOrigo</strong> oferece planos públicos para profissionais: <strong>Start (R$ 49/mês)</strong>, <strong>Pro (R$ 79/mês)</strong> e <strong>Clinic (R$ 149/mês)</strong>, com desconto de −20% na assinatura anual. Trial de 14 dias disponível. Pagamentos processados via <strong>Stripe</strong>.
+            O <strong>profissional</strong> (PROFESSIONAL) contrata um plano SaaS e paga mensalmente ou anualmente via <strong>Stripe</strong>. Valores dos planos estão na seção 3 acima e na <a href="/home#planos" className="text-[var(--brand-primary)] underline hover:no-underline">página inicial</a>.
           </p>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
-            O <strong>aluno</strong> (STUDENT) não é cobrado para usar o app vinculado ao profissional.
-          </p>
-          <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
-            Para detalhes contratuais SaaS do profissional, consulte <a href="/termos-saas" className="text-[var(--brand-primary)] underline hover:no-underline">Termos SaaS</a> e <a href="/aviso-pagamentos" className="text-[var(--brand-primary)] underline hover:no-underline">Aviso de Pagamentos</a>.
+            O <strong>aluno</strong> (STUDENT) não é cobrado para usar o app vinculado ao profissional. Não há cobrança ao aluno final.
           </p>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed">
             <strong>Foro exclusivo:</strong> Comarca de São Paulo/SP, Brasil.
