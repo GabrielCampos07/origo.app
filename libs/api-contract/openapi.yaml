@@ -64,10 +64,21 @@ components:
           description: Opaque refresh token (7 day TTL)
         user:
           $ref: '#/components/schemas/User'
+        missing_doc_versions:
+          type: array
+          items:
+            type: string
+          description: |
+            Legal V2: List of required legal documents not yet accepted by user.
+            Frontend should redirect to legal acceptance screens if non-empty.
+            Required docs: privacy_v2_2026-09-13, terms_app_v2_2026-09-13
+            PROFESSIONAL users also need: terms_saas_v2_2026-09-13, payments_notice_v2_2026-09-13
+          example: ["privacy_v2_2026-09-13", "terms_app_v2_2026-09-13"]
       required:
         - access_token
         - refresh_token
         - user
+        - missing_doc_versions
 
     ForgotPasswordRequest:
       type: object
@@ -183,6 +194,11 @@ paths:
       summary: Login
       description: |
         Autentica um usuário e retorna access token (JWT) + refresh token (opaco).
+        
+        **Legal V2 Integration:**
+        Response includes `missing_doc_versions` array with required legal documents
+        not yet accepted by the user. Frontend should redirect to legal acceptance
+        screens if this array is non-empty before allowing full app access.
         
         **Rate limits:**
         - 5 requests/min por IP

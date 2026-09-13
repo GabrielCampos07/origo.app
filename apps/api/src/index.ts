@@ -3,10 +3,7 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { PrismaClient } from '@prisma/client';
 import { authRoutes } from './routes/auth';
-<<<<<<< HEAD
-=======
 import { legalRoutes } from './routes/legal';
->>>>>>> 0f4454d (feat(api): activate Legal V2 acceptance routes with LegalAcceptance model)
 
 const prisma = new PrismaClient({
   log: process.env.LOG_LEVEL === 'debug' ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
@@ -76,13 +73,10 @@ async function start() {
             forgotPassword: 'POST /api/v1/auth/forgot-password',
             resetPassword: 'POST /api/v1/auth/reset-password',
           },
-<<<<<<< HEAD
-=======
           legal: {
             accept: 'POST /api/v1/legal/accept',
             missing: 'GET /api/v1/legal/missing',
           },
->>>>>>> 0f4454d (feat(api): activate Legal V2 acceptance routes with LegalAcceptance model)
         },
       };
     });
@@ -90,12 +84,8 @@ async function start() {
     // Register auth routes
     await server.register(authRoutes);
 
-<<<<<<< HEAD
-=======
     // Register legal routes (Legal V2)
     await server.register(legalRoutes);
-
->>>>>>> 0f4454d (feat(api): activate Legal V2 acceptance routes with LegalAcceptance model)
     const port = parseInt(process.env.PORT || '3001', 10);
     const host = process.env.HOST || '0.0.0.0';
 
