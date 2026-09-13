@@ -80,6 +80,15 @@ export default function CheckoutPage() {
   const [couponError, setCouponError] = useState("");
   const [showCouponField, setShowCouponField] = useState(false);
 
+  const formatPrice = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
+
   useEffect(() => {
     // SEC: Require auth + PROFESSIONAL role for checkout (fail-closed)
     const token = getAccessToken();
@@ -236,7 +245,7 @@ export default function CheckoutPage() {
                         </div>
                         <div className="text-right">
                           <div className="text-2xl font-bold text-[var(--color-ink-900)]">
-                            R$ {billingCycle === "monthly" ? p.price_monthly : p.price_annual}
+                            {formatPrice(billingCycle === "monthly" ? p.price_monthly : p.price_annual)}
                           </div>
                           <div className="text-sm text-[var(--color-ink-600)]">
                             /{billingCycle === "monthly" ? "mês" : "ano"}
@@ -376,20 +385,20 @@ export default function CheckoutPage() {
               </div>
               
               <div className="py-4 space-y-2">
-                {couponValidation?.valid && (
-                  <div className="flex justify-between text-sm text-[var(--color-ink-500)] line-through">
-                    <span>Subtotal</span>
-                    <span>R$ {price.toFixed(2)}</span>
+                  {couponValidation?.valid && (
+                    <div className="flex justify-between text-sm text-[var(--color-ink-500)] line-through">
+                      <span>Subtotal</span>
+                      <span>{formatPrice(price)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-base font-medium text-[var(--color-ink-600)]">
+                      Total {couponValidation?.valid ? "(1º mês)" : ""}
+                    </span>
+                    <span className="text-2xl font-bold text-[var(--color-ink-900)]">
+                      {formatPrice(finalPrice)}
+                    </span>
                   </div>
-                )}
-                <div className="flex justify-between items-baseline">
-                  <span className="text-base font-medium text-[var(--color-ink-600)]">
-                    Total {couponValidation?.valid ? "(1º mês)" : ""}
-                  </span>
-                  <span className="text-2xl font-bold text-[var(--color-ink-900)]">
-                    R$ {finalPrice.toFixed(2)}
-                  </span>
-                </div>
               </div>
               
               <button
