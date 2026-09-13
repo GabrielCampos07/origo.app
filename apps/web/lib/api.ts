@@ -259,3 +259,42 @@ export function acceptLegalDocuments(token: string, docVersions: string[]) {
     message: "Não foi possível conectar ao servidor. Verifique sua conexão.",
   }));
 }
+
+/**
+ * Checkout Session API
+ * Backend PR #21 (bb12fd6) - POST /api/v1/checkout/session
+ * 
+ * P0 SEC (FRONTEND SECURITY CHECKER): 
+ * - Bearer JWT required (authenticated)
+ * - Plan must be whitelisted: "start"|"pro"|"clinic"
+ * - Billing cycle must be: "monthly"|"annual"
+ * - Referral code is optional, sent only if validated
+ * - NEVER put Stripe secret or price IDs in frontend
+ * - Redirect to checkout_url from trusted API response only
+ * 
+ * Error handling:
+ * - 401: unauthorized → redirect to login
+ * - 403 legal_acceptance_required → redirect to /legal/accept
+ * - 403 STUDENT → redirect to dashboard
+ * - 422: validation error → show inline
+ * - 503: Stripe/config error → show inline
+ */
+export type CheckoutSessionRequest = {
+  plan: "start" | "pro" | "clinic";
+  billing_cycle: "monthly" | "annual";
+  referral_code?: string;
+};
+
+export type CheckoutSessionResponse = {
+  checkout_url: string;
+  session_id: string;
+};
+
+export async function createCheckoutSession(
+  request: CheckoutSessionRequest
+): Promise<ApiResult<CheckoutSessionResponse>> {
+  return apiPostAuth<CheckoutSessionResponse>(
+    "/api/v1/checkout/session",
+    request
+  );
+}

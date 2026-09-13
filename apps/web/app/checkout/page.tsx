@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getAccessToken, getStoredUser } from "../../lib/auth-storage";
 import { validateReferralCode, type CouponValidation } from "../../lib/referral";
-import { handleApiError } from "../../lib/api";
+import { handleApiError, createCheckoutSession } from "../../lib/api";
 
 type PlanId = "start" | "pro" | "clinic";
 
@@ -79,6 +79,8 @@ export default function CheckoutPage() {
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [couponError, setCouponError] = useState("");
   const [showCouponField, setShowCouponField] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
 
   const formatPrice = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -153,13 +155,65 @@ export default function CheckoutPage() {
   };
 
   const handleCheckout = async () => {
-    // Backend checkout session endpoint not yet implemented
-    // When ready, POST to /api/v1/checkout/session with:
-    // { plan: selectedPlan, billing_cycle: billingCycle, referral_code?: referralCode }
-    // Backend returns Stripe session URL → redirect
+    // P0 SEC (FRONTEND SECURITY CHECKER):
+    // - Plan whitelist enforced: start|pro|clinic
+    // - Bearer JWT required (getAccessToken)
+    // - Referral code sent only if validated
+    // - NO Stripe secrets or price IDs in frontend
+    // - Redirect to checkout_url from trusted API response
     
-    // For now, show clear message that checkout is coming soon
-    return;
+    setCheckoutLoading(true);
+    setCheckoutError("");
+    
+    // Build request body
+    const requestBody: {
+      plan: "start" | "pro" | "clinic";
+      billing_cycle: "monthly" | "annual";
+      referral_code?: string;
+    } = {
+      plan: selectedPlan,
+      billing_cycle: billingCycle,
+    };
+    
+    // Only send referral_code if validated
+    if (couponValidation?.valid && referralCode.trim()) {
+      requestBody.referral_code = referralCode.trim();
+    }
+    
+    const result = await createCheckoutSession(requestBody);
+    
+    if (result.ok) {
+      // SEC: Redirect to checkout_url from our trusted backend
+      // (not an open redirect - we trust our API response)
+      window.location.assign(result.data.checkout_url);
+      return;
+    }
+    
+    setCheckoutLoading(false);
+    
+    // Handle specific error cases per Backend PR #21 contract
+    if (result.kind === "unauthorized") {
+      // 401: redirect to login
+      router.push("/login?redirect=/checkout");
+      return;
+    }
+    
+    if (result.kind === "legal_acceptance_required") {
+      // 403 legal: handleApiError will redirect to /legal/accept
+      handleApiError(result);
+      return;
+    }
+    
+    if (result.status === 403) {
+      // 403 STUDENT role: redirect to dashboard
+      router.push("/dashboard");
+      return;
+    }
+    
+    // 422 validation or 503 service error: show inline
+    setCheckoutError(
+      result.message || "Erro ao criar sessão de checkout. Tente novamente."
+    );
   };
 
   if (loading) {
@@ -404,11 +458,15 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={handleCheckout}
-                disabled
-                className="w-full mt-4 py-3.5 rounded-xl bg-[#c7dbcc] text-[var(--color-ink-600)] font-semibold cursor-not-allowed transition-colors"
+                disabled={checkoutLoading}
+                className="w-full mt-4 py-3.5 rounded-xl bg-[var(--brand-primary)] text-white font-semibold hover:bg-[#7da890] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Pagamento em breve
+                {checkoutLoading ? "Criando sessão..." : plan.cta}
               </button>
+              
+              {checkoutError && (
+                <p className="text-sm text-red-600 mt-3 text-center">{checkoutError}</p>
+              )}
               
               <p className="text-xs text-[var(--color-ink-500)] mt-4 text-center leading-relaxed">
                 14 dias de teste grátis. Cancele quando quiser.{" "}
