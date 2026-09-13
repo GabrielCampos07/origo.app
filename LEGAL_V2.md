@@ -11,11 +11,6 @@
 
 Legal V2 persistence tracks user acceptance of required legal documents with timestamps. The API gates sensitive flows until users accept required documents based on their role.
 
-**What's needed:**
-1. Add `role` enum field to `User` Prisma model: `STANDARD | PROFESSIONAL`
-2. Update login to check `user.role` when calculating `missing_doc_versions`
-3. Update `/api/v1/legal/missing` to use `user.role` instead of placeholder
-4. Backend determines role based on subscription status or explicit assignment
 
 **Code locations to update when User.role lands:**
 - `apps/api/src/routes/auth.ts:177` — login response calculation
@@ -122,7 +117,7 @@ model LegalAcceptance {
 - `userId` extracted from JWT (server-side, tamper-proof)
 - `acceptedAt` timestamp is server-controlled (never from client)
 - Only whitelisted `docVersions` accepted (prevents injection)
-- Idempotent: re-accepting same docs updates timestamp
+- Idempotent: re-accepting same docs = 200 no-op (original acceptedAt unchanged)
 
 ---
 
@@ -139,7 +134,7 @@ model LegalAcceptance {
     "privacy_v2_2026-09-13",
     "terms_app_v2_2026-09-13"
   ],
-  "user_role": "STANDARD"
+  "user_role": "STUDENT"
 }
 ```
 
@@ -328,7 +323,7 @@ fastify.post('/api/v1/checkout', async (request, reply) => {
 - ✅ No endpoint allows accepting on behalf of another user
 
 ### Replay Attack Mitigation
-- ✅ Idempotent upsert: re-accepting same docs updates timestamp
+- ✅ INSERT ONLY: re-accepting same docs = 200 no-op (original acceptedAt unchanged)
 - ✅ JWT expiry enforced (15 min access token TTL)
 - ⚠️ Consider: Add nonce or request ID for critical flows (future)
 
@@ -339,7 +334,7 @@ fastify.post('/api/v1/checkout', async (request, reply) => {
 
 ### Rate Limiting
 - ✅ Global rate limit: 100 req/15min per IP (Fastify global)
-- ⚠️ Consider: Separate rate limit for `/legal/accept` (e.g., 10/hour) to prevent abuse
+- 📝 Follow-up: Consider separate rate limit for `/legal/accept` (e.g., 10/hour)
 
 ### Canonical docVersion Format
 ⚠️ **CRITICAL:** Use underscore V2 IDs ONLY, never @ format.
@@ -386,7 +381,7 @@ This enforces the APPEND-ONLY model at the database level.
 - [ ] POST `/api/v1/legal/accept` with valid JWT and docVersions → 200
 - [ ] POST `/api/v1/legal/accept` without JWT → 401
 - [ ] POST `/api/v1/legal/accept` with invalid docVersions → 422 with `invalid_versions`
-- [ ] POST `/api/v1/legal/accept` re-accepting same docs → 200 (idempotent, updates timestamp)
+- [ ] POST `/api/v1/legal/accept` re-accepting same docs → 200 no-op (original acceptedAt unchanged)
 - [ ] GET `/api/v1/legal/missing` for new user → returns all required docs
 - [ ] GET `/api/v1/legal/missing` after accepting → returns empty `missing_docs`
 - [ ] GET `/api/v1/legal/missing` for PROFESSIONAL user → includes SaaS + payment docs

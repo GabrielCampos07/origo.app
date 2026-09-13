@@ -201,8 +201,6 @@ export async function legalRoutes(fastify: FastifyInstance) {
       }
 
       try {
-        const acceptedAt = new Date();
-
         // APPEND-ONLY: Insert only if not already accepted (no update on re-acceptance)
         // Fetch existing acceptances first
         const existing = await prisma.legalAcceptance.findMany({
@@ -210,14 +208,17 @@ export async function legalRoutes(fastify: FastifyInstance) {
             userId,
             docVersion: { in: docVersions },
           },
-          select: { docVersion: true },
+          select: { docVersion: true, acceptedAt: true },
         });
 
-        const existingSet = new Set(existing.map(a => a.docVersion));
-        const newDocVersions = docVersions.filter(v => !existingSet.has(v));
+        const existingMap = new Map(existing.map(a => [a.docVersion, a.acceptedAt]));
+        const newDocVersions = docVersions.filter(v => !existingMap.has(v));
 
+        let acceptedAt: Date;
+        
         // Insert only new acceptances (skip duplicates = no-op)
         if (newDocVersions.length > 0) {
+          acceptedAt = new Date();
           await prisma.legalAcceptance.createMany({
             data: newDocVersions.map(docVersion => ({
               userId,
@@ -226,6 +227,9 @@ export async function legalRoutes(fastify: FastifyInstance) {
             })),
             skipDuplicates: true, // Safety: skip if unique constraint violated
           });
+        } else {
+          // Pure re-acceptance: use earliest original acceptedAt from existing records
+          acceptedAt = new Date(Math.min(...Array.from(existingMap.values()).map(d => d.getTime())));
         }
 
         // Return all requested docVersions as accepted (idempotent 200)
