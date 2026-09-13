@@ -493,6 +493,239 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/v1/referrals/code:
+    get:
+      summary: Get or create referral code
+      description: |
+        Returns the authenticated user's referral code. Creates one if it doesn't exist.
+        
+        **PROFESSIONAL-only:** Only users with PROFESSIONAL role can access referral codes.
+        
+        **Security:**
+        - userId extracted from JWT (server-side, tamper-proof)
+        - One code per user (unique constraint)
+        - Code format: 8 uppercase alphanumeric characters (A-Z, 2-9, excluding 0/O/1/I)
+        
+        **Business Rules:**
+        - PROFESSIONAL users get referral codes to share
+        - Referred users get 100% off first month
+        - Referrer gets 15% commission on paid subscriptions after free month
+      operationId: getReferralCode
+      tags:
+        - Referrals
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Referral code retrieved or created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralCodeResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (non-PROFESSIONAL user)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Forbidden
+                message: Only PROFESSIONAL users can access referral codes
+        '429':
+          description: Rate limit excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/referrals/status:
+    get:
+      summary: Get referral status and payouts
+      description: |
+        Returns referrals attributed to the user's referral code + payout summary.
+        
+        **PROFESSIONAL-only:** Only users with PROFESSIONAL role can access referral status.
+        
+        **Privacy:**
+        - referred_user_id is returned but email/name are NOT exposed
+        - Only returns data for authenticated user's referrals
+        
+        **Payouts:**
+        - 15% commission (1500 bps) on paid subscriptions after free month
+        - Zero commission during free month
+        - Append-only ledger (read-only)
+      operationId: getReferralStatus
+      tags:
+        - Referrals
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Referral status and payouts retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralStatusResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (non-PROFESSIONAL user)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Forbidden
+                message: Only PROFESSIONAL users can access referral status
+        '404':
+          description: No referral code exists for this user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not Found
+                message: No referral code exists for this user
+        '429':
+          description: Rate limit excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/referrals/validate:
+    post:
+      summary: Validate a referral code
+      description: |
+        Validates a referral code without leaking PII.
+        
+        **Public endpoint:** No authentication required (or can be authenticated).
+        
+        **Privacy:**
+        - Does NOT return referrer's email, name, or other PII
+        - Only returns: valid/invalid + minimal referrer hint
+        - Case-insensitive code lookup
+        
+        **Use cases:**
+        - Checkout flow: validate code before applying
+        - Signup flow: check if code is valid
+      operationId: validateReferralCode
+      tags:
+        - Referrals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateReferralCodeRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateReferralCodeResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Validation Error
+                message: code is required and must be a string
+        '429':
+          description: Rate limit excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/webhooks/stripe:
+    post:
+      summary: Stripe webhook handler
+      description: |
+        Handles Stripe webhook events (invoice.paid).
+        
+        **Webhook-only:** Uses Stripe signature verification (NOT JWT).
+        
+        **Security:**
+        - Stripe signature verification via STRIPE_WEBHOOK_SECRET
+        - Append-only payout ledger (INSERT only, never UPDATE)
+        - Idempotent: stripeInvoiceId unique constraint prevents duplicates
+        
+        **Business Rules:**
+        - Only invoice.paid events processed
+        - 15% commission (1500 bps) on paid amount after free month
+        - Zero commission during free month
+        - Requires Stripe Customer metadata: origo_user_id
+        
+        **Webhook Setup:**
+        1. Create endpoint in Stripe dashboard: /api/v1/webhooks/stripe
+        2. Listen to: invoice.paid
+        3. Copy webhook secret to STRIPE_WEBHOOK_SECRET env var
+      operationId: stripeWebhook
+      tags:
+        - Referrals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Stripe event payload
+      responses:
+        '200':
+          description: Webhook processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                  payout_id:
+                    type: string
+                    description: ID of payout record created (if applicable)
+                  skipped:
+                    type: string
+                    description: Reason for skipping (if applicable)
+                    enum:
+                      - no_customer_or_amount
+                      - customer_not_found
+                      - no_origo_user_id
+                      - not_referred
+                      - free_month_active
+                      - already_recorded
+                  unhandled:
+                    type: string
+                    description: Event type for unhandled events
+        '400':
+          description: Bad request (invalid signature)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Bad Request
+                message: Invalid webhook signature
+        '500':
+          description: Internal server error (Stripe will retry)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     Error:
@@ -586,6 +819,124 @@ components:
         - error
         - missing_doc_versions
 
+    ReferralCodeResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Referral code (8 uppercase alphanumeric)
+          example: XYZA1234
+        created_at:
+          type: string
+          format: date-time
+          description: Code creation timestamp
+      required:
+        - code
+        - created_at
+
+    ReferralStatusResponse:
+      type: object
+      properties:
+        referral_code:
+          type: object
+          properties:
+            code:
+              type: string
+              example: XYZA1234
+            created_at:
+              type: string
+              format: date-time
+          required:
+            - code
+            - created_at
+        referrals:
+          type: array
+          items:
+            type: object
+            properties:
+              referred_user_id:
+                type: string
+                description: ID of referred user (no PII like email/name)
+                example: cm123abc456
+              status:
+                type: string
+                enum: [PENDING, ACTIVE, COMPLETED, CANCELLED]
+                example: ACTIVE
+              created_at:
+                type: string
+                format: date-time
+              free_month_ends_at:
+                type: string
+                format: date-time
+                nullable: true
+            required:
+              - referred_user_id
+              - status
+              - created_at
+        payouts:
+          type: array
+          items:
+            type: object
+            properties:
+              referral_id:
+                type: string
+                example: cm456def789
+              amount_cents:
+                type: integer
+                description: Commission amount in cents
+                example: 1500
+              currency:
+                type: string
+                example: brl
+              commission_rate_bps:
+                type: integer
+                description: Commission rate in basis points (1500 = 15%)
+                example: 1500
+              created_at:
+                type: string
+                format: date-time
+            required:
+              - referral_id
+              - amount_cents
+              - currency
+              - commission_rate_bps
+              - created_at
+        total_payouts_cents:
+          type: integer
+          description: Sum of all payouts in cents
+          example: 3000
+      required:
+        - referral_code
+        - referrals
+        - payouts
+        - total_payouts_cents
+
+    ValidateReferralCodeRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Referral code to validate
+          example: XYZA1234
+          minLength: 1
+          maxLength: 50
+      required:
+        - code
+
+    ValidateReferralCodeResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: Whether the code is valid
+          example: true
+        referrer_hint:
+          type: string
+          description: Minimal hint about referrer (no PII)
+          example: PROFESSIONAL user
+      required:
+        - valid
+
   securitySchemes:
     BearerAuth:
       type: http
@@ -602,6 +953,8 @@ components:
         - /api/v1/auth/* (all auth routes)
         - /api/v1/legal/accept
         - /api/v1/legal/missing
+        - /api/v1/referrals/validate (public)
+        - /api/v1/webhooks/stripe (webhook)
 
 tags:
   - name: Infrastructure
@@ -610,3 +963,5 @@ tags:
     description: Autenticação (login, forgot-password, reset-password)
   - name: Legal
     description: Legal V2 acceptance tracking (privacy, terms, payments notices)
+  - name: Referrals
+    description: Referral MVP (codes, validation, status, payouts)

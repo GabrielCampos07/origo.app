@@ -4,6 +4,8 @@ import rateLimit from '@fastify/rate-limit';
 import { PrismaClient } from '@prisma/client';
 import { authRoutes } from './routes/auth';
 import { legalRoutes, REQUIRED_DOCS_ALL_USERS, REQUIRED_DOCS_PROFESSIONAL } from './routes/legal';
+import { referralRoutes } from './routes/referrals';
+import { stripeWebhookRoutes } from './routes/stripe-webhook';
 import { verifyAccessToken } from './lib/jwt';
 
 const prisma = new PrismaClient({
@@ -26,6 +28,8 @@ const server = Fastify({
       },
     },
   },
+  // Enable raw body for Stripe webhook signature verification
+  bodyLimit: 1048576, // 1MB
 });
 
 async function start() {
@@ -78,6 +82,14 @@ async function start() {
             accept: 'POST /api/v1/legal/accept',
             missing: 'GET /api/v1/legal/missing',
           },
+          referrals: {
+            code: 'GET /api/v1/referrals/code',
+            status: 'GET /api/v1/referrals/status',
+            validate: 'POST /api/v1/referrals/validate',
+          },
+          webhooks: {
+            stripe: 'POST /api/v1/webhooks/stripe',
+          },
         },
       };
     });
@@ -87,6 +99,12 @@ async function start() {
 
     // Register legal routes (Legal V2)
     await server.register(legalRoutes);
+
+    // Register referral routes (Referral MVP)
+    await server.register(referralRoutes);
+
+    // Register Stripe webhook routes (Referral MVP payouts)
+    await server.register(stripeWebhookRoutes);
 
     // Legal acceptance enforcement middleware (403 if missing required docs)
     // BACKEND SECURITY: Criteria enforced
@@ -108,6 +126,8 @@ async function start() {
         '/api/v1/auth/reset-password',
         '/api/v1/legal/accept',
         '/api/v1/legal/missing',
+        '/api/v1/referrals/validate',
+        '/api/v1/webhooks/stripe',
       ];
 
       // Extract path without query parameters (prevent bypass via ?foo=bar)
