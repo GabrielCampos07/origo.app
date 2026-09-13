@@ -10,12 +10,16 @@ import { Alert } from "../../components/auth/Alert";
 
 function readResetToken(): string | null {
   if (typeof window === "undefined") return null;
+  
   const hash = window.location.hash?.replace(/^#/, "") || "";
   if (hash.startsWith("token=")) {
-    return decodeURIComponent(hash.slice("token=".length)) || null;
+    const token = decodeURIComponent(hash.slice("token=".length)).trim();
+    return token || null;
   }
+  
   const params = new URLSearchParams(window.location.search);
-  return params.get("token");
+  const token = params.get("token");
+  return token ? token.trim() : null;
 }
 
 export default function ResetPasswordPage() {

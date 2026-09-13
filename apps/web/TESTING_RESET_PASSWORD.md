@@ -65,19 +65,25 @@ You'll need three services running:
 ```typescript
 // 1. First, check URL hash for #token=VALUE
 // 2. Fallback to query param ?token=VALUE
+// 3. Trim whitespace and reject empty
 function readResetToken(): string | null {
   const hash = window.location.hash?.replace(/^#/, "") || "";
   if (hash.startsWith("token=")) {
-    return decodeURIComponent(hash.slice("token=".length)) || null;
+    const token = decodeURIComponent(hash.slice("token=".length)).trim();
+    return token || null;
   }
+  
   const params = new URLSearchParams(window.location.search);
-  return params.get("token");
+  const token = params.get("token");
+  return token ? token.trim() : null;
 }
 ```
 
+**Important**: The token value is NOT modified beyond decoding and trimming. Base64url tokens can legitimately start with `3D`, so no prefix stripping is performed. Email quoted-printable issues are resolved on the backend by proper HTML email encoding (see Backend PR #3).
+
 ### API Request
 
-The frontend sends to `POST /api/v1/auth/reset-password`:
+The frontend sends to `POST /api/v1/auth/reset-password` with **snake_case** fields:
 
 ```json
 {
@@ -86,7 +92,10 @@ The frontend sends to `POST /api/v1/auth/reset-password`:
 }
 ```
 
-**Note**: `confirm_password` is NOT sent to the API - it's validated client-side only.
+**Important**:
+- ✅ Field names are **snake_case** (`new_password`, not `newPassword`)
+- ✅ `confirm_password` is NOT sent to the API - it's validated client-side only
+- ✅ Token is sent **as-is** (only decoded and trimmed, never modified - base64url can start with `3D`)
 
 ### Email Normalization
 
