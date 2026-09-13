@@ -659,7 +659,7 @@ export default function HomePage() {
                   <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
                 </div>
                 <div className="mt-1 text-sm text-[var(--color-ink-600)]">
-                  ou <strong className="text-[var(--color-ink-900)]">R$ 470,40</strong>/ano
+                  ou <strong className="text-[var(--color-ink-900)]">R$ 470</strong>/ano
                 </div>
               </div>
               <p className="font-normal text-sm text-[var(--color-ink-600)]">Para quem está começando</p>
@@ -692,7 +692,7 @@ export default function HomePage() {
                 <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 79</span>
                 <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
               </div>
-              <p className="text-sm text-[var(--color-ink-600)] mb-3">ou R$ 758,40/ano (−20%)</p>
+              <p className="text-sm text-[var(--color-ink-600)] mb-3">ou R$ 758/ano (−20%)</p>
               <p className="font-normal text-sm text-[var(--color-ink-600)]">Para atendimento consolidado</p>
             </div>
             <ul className="flex flex-col gap-3 text-sm text-[var(--color-ink-600)] flex-1">
@@ -721,7 +721,7 @@ export default function HomePage() {
                 <span className="font-bold text-4xl text-[var(--color-ink-900)]">R$ 149</span>
                 <span className="font-normal text-base text-[var(--color-ink-600)]">/mês</span>
               </div>
-              <p className="text-sm text-[var(--color-ink-600)] mb-3">ou R$ 1.430,40/ano (−20%)</p>
+              <p className="text-sm text-[var(--color-ink-600)] mb-3">ou R$ 1.430/ano (−20%)</p>
               <p className="font-normal text-sm text-[var(--color-ink-600)]">Para equipes e clínicas</p>
             </div>
             <ul className="flex flex-col gap-3 text-sm text-[var(--color-ink-600)] flex-1">
