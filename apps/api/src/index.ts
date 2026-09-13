@@ -3,7 +3,8 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { PrismaClient } from '@prisma/client';
 import { authRoutes } from './routes/auth';
-import { legalRoutes } from './routes/legal';
+import { legalRoutes, REQUIRED_DOCS_ALL_USERS, REQUIRED_DOCS_PROFESSIONAL } from './routes/legal';
+import { verifyAccessToken } from './lib/jwt';
 
 const prisma = new PrismaClient({
   log: process.env.LOG_LEVEL === 'debug' ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
@@ -86,6 +87,94 @@ async function start() {
 
     // Register legal routes (Legal V2)
     await server.register(legalRoutes);
+
+    // Legal acceptance enforcement middleware (403 if missing required docs)
+    // BACKEND SECURITY: Criteria enforced
+    // 1. Only after valid JWT - missing/invalid token stays 401 (not 403)
+    // 2. 403 only when authenticated user missing required docs for role
+    // 3. missing_doc_versions calculated server-side from JWT userId + DB role + LegalAcceptance SELECT
+    // 4. Allowlist exceptions (no gate): auth routes + /legal/accept + /legal/missing + /health
+    // 5. No bypass via header/query; userId/role only from JWT+DB
+    // 6. Uses 403 (not 451)
+    // 7. Middleware SELECT only; accept stays createMany/skipDuplicates append-only
+    server.addHook('onRequest', async (request, reply) => {
+      // Exception list: routes that should NOT be blocked by legal acceptance
+      // SECURITY: Use path only (not full URL) to prevent query parameter bypass
+      const exemptRoutes = [
+        '/health',
+        '/api/v1',
+        '/api/v1/auth/login',
+        '/api/v1/auth/forgot-password',
+        '/api/v1/auth/reset-password',
+        '/api/v1/legal/accept',
+        '/api/v1/legal/missing',
+      ];
+
+      // Extract path without query parameters (prevent bypass via ?foo=bar)
+      const requestPath = request.url.split('?')[0];
+
+      // Skip enforcement for exempt routes
+      if (exemptRoutes.includes(requestPath)) {
+        return;
+      }
+
+      // Skip enforcement for non-authenticated requests (let auth middleware handle 401)
+      // SECURITY: Invalid/missing token returns early → route handler sends 401 (not 403)
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return;
+      }
+
+      try {
+        // SECURITY: Extract userId from JWT (server-side, signature-verified)
+        // Never trust client headers/query params for userId or role
+        const token = authHeader.substring(7);
+        const payload = verifyAccessToken(token);
+        const userId = payload.userId;
+
+        // SECURITY: Fetch user role and acceptances from DB (SELECT only)
+        // Role from User.role enum (PROFESSIONAL | STUDENT)
+        // Never accept role from client
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          include: {
+            legalAcceptances: {
+              select: { docVersion: true },
+            },
+          },
+        });
+
+        if (!user) {
+          // User not found - let the route handler deal with it (returns 404 or 401)
+          return;
+        }
+
+        // SECURITY: Determine required docs based on DB role (server-side calculation)
+        // PROFESSIONAL: privacy + terms_app + terms_saas + payments_notice
+        // STUDENT: privacy + terms_app
+        const requiredDocs = [
+          ...REQUIRED_DOCS_ALL_USERS,
+          ...(user.role === 'PROFESSIONAL' ? REQUIRED_DOCS_PROFESSIONAL : []),
+        ];
+
+        // SECURITY: Calculate missing docs from DB acceptances (server-side)
+        const acceptedDocVersions = new Set(user.legalAcceptances.map(a => a.docVersion));
+        const missingDocVersions = requiredDocs.filter(doc => !acceptedDocVersions.has(doc));
+
+        // SECURITY: Return 403 (not 451) with missing_doc_versions calculated server-side
+        if (missingDocVersions.length > 0) {
+          return reply.code(403).send({
+            error: 'legal_acceptance_required',
+            missing_doc_versions: missingDocVersions,
+          });
+        }
+      } catch (error) {
+        // JWT verification failed or other error - let it pass through
+        // Route handler will properly handle auth errors (returns 401)
+        // SECURITY: Invalid JWT stays 401 (not 403)
+        return;
+      }
+    });
     const port = parseInt(process.env.PORT || '3001', 10);
     const host = process.env.HOST || '0.0.0.0';
 

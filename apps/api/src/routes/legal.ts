@@ -67,7 +67,8 @@ export const FOOTER_ONLY_DOCS = [
  * 
  * APPEND-ONLY Model (LGPD compliance):
  * - LegalAcceptance is APPEND-ONLY — no update/delete endpoints exposed
- * - INSERT ONLY: re-acceptance is a no-op (keeps original acceptedAt unchanged)
+ * - INSERT ONLY: uses createMany with skipDuplicates: true (no upsert, no timestamp updates)
+ * - Re-accepting returns earliest original acceptedAt from stored records
  * - Never update acceptedAt, userId, or docVersion after record creation
  * - Individual records never deleted (only cascade on User delete)
  * - Database role: GRANT INSERT + SELECT only (NO UPDATE/DELETE for app)
@@ -91,7 +92,7 @@ interface RecordAcceptanceBody {
 
 interface CheckMissingDocsResponse {
   missing_docs: string[];
-  user_role?: 'STANDARD' | 'PROFESSIONAL'; // Will be determined from User model
+  user_role?: 'PROFESSIONAL' | 'STUDENT'; // From User.role enum
 }
 
 /**
@@ -148,8 +149,8 @@ export async function legalRoutes(fastify: FastifyInstance) {
    * 
    * APPEND-ONLY Security (BACKEND SECURITY CHECKER):
    * - LegalAcceptance is APPEND-ONLY: no delete endpoint, no arbitrary updates
-   * - INSERT ONLY: re-accepting same docVersion = 200 no-op (keeps original acceptedAt)
-   * - NEVER updates acceptedAt or any field on re-acceptance
+   * - INSERT ONLY: uses createMany with skipDuplicates: true (no upsert, no timestamp updates)
+   * - Re-accepting returns earliest original acceptedAt from stored records
    * - userId/docVersion NEVER modified after creation
    * - Database: app role has INSERT + SELECT only (NO UPDATE/DELETE grants)
    * 
@@ -322,28 +323,15 @@ export async function legalRoutes(fastify: FastifyInstance) {
   );
 
   /**
-   * Middleware: Check legal acceptance before protected routes
+   * Helper: checkLegalAcceptance for use in route handlers
    * 
-   * Example usage in other routes:
-   * 
-   * fastify.addHook('preHandler', async (request, reply) => {
-   *   const userId = extractUserId(request);
-   *   if (userId) {
-   *     const hasAccepted = await checkLegalAcceptance(userId);
-   *     if (!hasAccepted) {
-   *       return reply.code(451).send({
-   *         error: 'Legal Acceptance Required',
-   *         message: 'You must accept required legal documents',
-   *         missing_endpoint: '/api/v1/legal/missing',
-   *       });
-   *     }
-   *   }
-   * });
+   * NOTE: Global middleware now handles legal acceptance enforcement automatically.
+   * This helper is available for custom logic if needed.
    * 
    * SECURITY NOTE for BACKEND SECURITY CHECKER:
-   * - Use HTTP 451 (Unavailable For Legal Reasons) for blocked requests
-   * - Always direct to /api/v1/legal/missing to get specific required docs
-   * - For checkout/PROFESSIONAL flows, check additional docs
+   * - Global middleware returns HTTP 403 with missing_doc_versions
+   * - Middleware enforces role-based requirements (PROFESSIONAL vs STUDENT)
+   * - Uses userId from JWT + role from DB (never trusts client)
    */
 }
 

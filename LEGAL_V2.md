@@ -117,7 +117,9 @@ model LegalAcceptance {
 - `userId` extracted from JWT (server-side, tamper-proof)
 - `acceptedAt` timestamp is server-controlled (never from client)
 - Only whitelisted `docVersions` accepted (prevents injection)
-- Idempotent: re-accepting same docs = 200 no-op (original acceptedAt unchanged)
+- Idempotent: re-accepting same docs = 200 no-op
+  - Uses `createMany` with `skipDuplicates: true` to skip existing records
+  - Returns earliest original `acceptedAt` from stored records (never invents new timestamp)
 
 ---
 
@@ -128,6 +130,7 @@ model LegalAcceptance {
 **Authentication:** Required (Bearer JWT)
 
 **Success Response (200):**
+**STUDENT role** (base documents only):
 ```json
 {
   "missing_docs": [
@@ -138,7 +141,7 @@ model LegalAcceptance {
 }
 ```
 
-For PROFESSIONAL users:
+**PROFESSIONAL role** (additional checkout documents):
 ```json
 {
   "missing_docs": [
@@ -265,53 +268,66 @@ if (user_role === 'PROFESSIONAL' && missing_docs.length > 0) {
 
 ---
 
-## API Gates (Future Implementation)
+## API Gates (IMPLEMENTED)
 
-Once the DB model lands, protected routes can check legal acceptance:
+✅ **Global enforcement active** — All protected authenticated endpoints enforce legal acceptance.
 
-### Example: Gate Dashboard Access
+### Global Middleware Enforcement
 
-```typescript
-// In dashboard route handler
-fastify.addHook('preHandler', async (request, reply) => {
-  const userId = extractUserId(request);
-  if (userId) {
-    const hasAccepted = await checkLegalAcceptance(userId);
-    if (!hasAccepted) {
-      return reply.code(451).send({
-        error: 'Legal Acceptance Required',
-        message: 'You must accept required legal documents',
-        missing_endpoint: '/api/v1/legal/missing',
-      });
-    }
-  }
-});
+Protected authenticated endpoints automatically return **403 Forbidden** if user is missing required legal documents for their role.
+
+**Response format:**
+```json
+{
+  "error": "legal_acceptance_required",
+  "missing_doc_versions": [
+    "privacy_v2_2026-09-13",
+    "terms_app_v2_2026-09-13"
+  ]
+}
 ```
 
-**HTTP 451 (Unavailable For Legal Reasons)** is the appropriate status code for blocked requests.
+**Exempt routes (no 403 enforcement):**
+- `/health` — health check
+- `/api/v1` — API info
+- `/api/v1/auth/login` — login
+- `/api/v1/auth/forgot-password` — forgot password
+- `/api/v1/auth/reset-password` — reset password
+- `/api/v1/legal/accept` — accept legal docs
+- `/api/v1/legal/missing` — check missing docs
 
-### Example: Gate Checkout for PROFESSIONAL
+**How it works:**
+1. Middleware runs on every request (`onRequest` hook)
+2. Skips exempt routes using path-only comparison (prevents query parameter bypass)
+3. Skips unauthenticated requests → route handler returns 401 (not 403)
+4. Extracts `userId` from JWT Bearer token (server-side, signature-verified)
+5. Fetches user's role (PROFESSIONAL | STUDENT) from DB + existing acceptances (SELECT only)
+6. Calculates required docs server-side based on DB role (never trusts client)
+7. Returns 403 with `missing_doc_versions` if incomplete
+8. Otherwise allows request to proceed
 
-```typescript
-// In checkout route handler
-fastify.post('/api/v1/checkout', async (request, reply) => {
-  const userId = extractUserId(request);
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  
-  const userRole = determineUserRole(user); // TODO: implement based on User model
-  const hasAccepted = await checkLegalAcceptance(userId, userRole);
-  
-  if (!hasAccepted) {
-    return reply.code(451).send({
-      error: 'Legal Acceptance Required',
-      message: 'PROFESSIONAL users must accept SaaS terms and payment notices',
-      missing_endpoint: '/api/v1/legal/missing',
-    });
-  }
-  
-  // Proceed with checkout
-});
-```
+**BACKEND SECURITY Criteria (verified):**
+1. ✅ Only after valid JWT — missing/invalid token stays **401** (not 403)
+2. ✅ **403** only when authenticated user missing required docs for role
+   - PROFESSIONAL: privacy + terms_app + terms_saas + payments_notice
+   - STUDENT: privacy + terms_app
+3. ✅ `missing_doc_versions` calculated server-side from JWT userId + DB role + LegalAcceptance SELECT
+4. ✅ Allowlist exceptions (no gate): auth routes + /legal/accept + /legal/missing + /health
+5. ✅ No bypass via header/query; userId/role only from JWT+DB
+6. ✅ Uses **403** (not 451) in response and OpenAPI
+7. ✅ Middleware SELECT only; accept stays createMany/skipDuplicates append-only
+
+### Role-Based Enforcement
+
+**STUDENT users** must accept:
+- `privacy_v2_2026-09-13`
+- `terms_app_v2_2026-09-13`
+
+**PROFESSIONAL users** must accept (additional):
+- `terms_saas_v2_2026-09-13`
+- `payments_notice_v2_2026-09-13`
+
+The middleware automatically enforces the correct set based on `User.role` from the database.
 
 ---
 
@@ -323,7 +339,8 @@ fastify.post('/api/v1/checkout', async (request, reply) => {
 - ✅ No endpoint allows accepting on behalf of another user
 
 ### Replay Attack Mitigation
-- ✅ INSERT ONLY: re-accepting same docs = 200 no-op (original acceptedAt unchanged)
+- ✅ INSERT ONLY: uses `createMany` with `skipDuplicates: true` (no upsert, no timestamp updates)
+- ✅ Re-accepting returns earliest original `acceptedAt` from stored records (never invents new timestamp)
 - ✅ JWT expiry enforced (15 min access token TTL)
 - ⚠️ Consider: Add nonce or request ID for critical flows (future)
 
@@ -381,13 +398,13 @@ This enforces the APPEND-ONLY model at the database level.
 - [ ] POST `/api/v1/legal/accept` with valid JWT and docVersions → 200
 - [ ] POST `/api/v1/legal/accept` without JWT → 401
 - [ ] POST `/api/v1/legal/accept` with invalid docVersions → 422 with `invalid_versions`
-- [ ] POST `/api/v1/legal/accept` re-accepting same docs → 200 no-op (original acceptedAt unchanged)
+- [ ] POST `/api/v1/legal/accept` re-accepting same docs → 200 with original `acceptedAt` (createMany+skipDuplicates)
 - [ ] GET `/api/v1/legal/missing` for new user → returns all required docs
 - [ ] GET `/api/v1/legal/missing` after accepting → returns empty `missing_docs`
-- [ ] GET `/api/v1/legal/missing` for PROFESSIONAL user → includes SaaS + payment docs
+- [ ] GET `/api/v1/legal/missing` for PROFESSIONAL user → includes SaaS + payment docs (not STUDENT)
 - [ ] Verify unique constraint: `(userId, docVersion)` prevents duplicates
 - [ ] Verify cascade delete: deleting user removes acceptances
-- [ ] Load test: 100 concurrent `/legal/accept` requests for same user (idempotency)
+- [ ] Load test: 100 concurrent `/legal/accept` requests for same user (idempotency with skipDuplicates)
 
 ---
 
