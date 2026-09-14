@@ -53,6 +53,12 @@ const prisma = new PrismaClient();
  * - InviteToken.category and Enrollment.category still stored (from profile, not client)
  * - No DB schema changes in this commit (category columns remain, no student email column added)
  * - OpenAPI contract updated: CreateInviteRequest requires student_email, omits category
+ * 
+ * P0 500 ERROR FIX (LIVE):
+ * - Added request.body validation before destructuring (prevents 500 on missing/malformed body)
+ * - Separated JWT verification with dedicated try-catch (returns 401 instead of 500 on invalid JWT)
+ * - Added Prisma error handling for specific error codes (P2025, P2002, P2003)
+ * - Returns proper 401/403/404/422 status codes instead of generic 500 where applicable
  */
 
 // OWNER lock (Gabriel) for Origo.app invite student flow:
@@ -136,6 +142,16 @@ export async function inviteRoutes(fastify: FastifyInstance) {
       // OWNER LOCK (Gabriel) - Front #37 MERGED:
       // - student_email REQUIRED in body (validated, NOT stored - no migration)
       // - category NO LONGER in body (derived from ProfessionalProfile)
+      
+      // BACKEND SECURITY CHECKER: Validate request body exists before destructuring
+      // Prevents 500 if body is undefined/null (malformed JSON or missing Content-Type)
+      if (!request.body || typeof request.body !== 'object') {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'Request body is required',
+        });
+      }
+
       const { student_email } = request.body;
 
       // Validate student_email (required, email format)
@@ -165,11 +181,24 @@ export async function inviteRoutes(fastify: FastifyInstance) {
         });
       }
 
+      // BACKEND SECURITY CHECKER: Extract and verify JWT
+      // Catch JWT errors separately to return 401 instead of 500
+      let professionalUserId: string;
       try {
-        // SECURITY (Sec 2): Extract userId from JWT (server-side, signature-verified)
         const token = authHeader.substring(7);
         const payload = verifyAccessToken(token);
-        const professionalUserId = payload.userId;
+        professionalUserId = payload.userId;
+      } catch (jwtError) {
+        // JWT verification failed (invalid, expired, malformed, or signature mismatch)
+        fastify.log.warn(jwtError, 'JWT verification failed in POST /invites');
+        return reply.code(401).send({
+          error: 'Unauthorized',
+          message: 'Invalid or expired authentication token',
+        });
+      }
+
+      try {
+        // SECURITY (Sec 2): Extract userId from JWT (server-side, signature-verified)
 
         // SECURITY (Sec 6): Verify PROFESSIONAL role and profile
         const user = await prisma.user.findUnique({
@@ -228,6 +257,41 @@ export async function inviteRoutes(fastify: FastifyInstance) {
           expires_at: expiresAt.toISOString(),
         });
       } catch (error) {
+        // BACKEND SECURITY CHECKER: Handle Prisma-specific errors with proper status codes
+        // Prevents leaking internal error details while providing actionable feedback
+        
+        if (error && typeof error === 'object' && 'code' in error) {
+          const prismaError = error as { code: string; meta?: any };
+          
+          // Prisma P2025: Record not found (foreign key constraint)
+          if (prismaError.code === 'P2025') {
+            fastify.log.warn(prismaError, 'Professional user not found during invite creation');
+            return reply.code(404).send({
+              error: 'Not Found',
+              message: 'Professional user not found',
+            });
+          }
+          
+          // Prisma P2002: Unique constraint violation
+          if (prismaError.code === 'P2002') {
+            fastify.log.warn(prismaError, 'Unique constraint violation during invite creation');
+            return reply.code(422).send({
+              error: 'Validation Error',
+              message: 'Unable to create invite due to data conflict',
+            });
+          }
+          
+          // Prisma P2003: Foreign key constraint failed
+          if (prismaError.code === 'P2003') {
+            fastify.log.warn(prismaError, 'Foreign key constraint failed during invite creation');
+            return reply.code(422).send({
+              error: 'Validation Error',
+              message: 'Invalid reference data provided',
+            });
+          }
+        }
+        
+        // Generic database or unexpected error
         fastify.log.error(error, 'Create invite error');
         return reply.code(500).send({
           error: 'Internal Server Error',
