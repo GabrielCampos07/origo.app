@@ -13,26 +13,14 @@ type InviteResponse = {
   expires_at: string;
 };
 
-const CATEGORIES = [
-  { value: "fisioterapeuta", label: "Fisioterapeuta" },
-  { value: "psicologo", label: "Psicólogo" },
-  { value: "terapeuta-ocupacional", label: "Terapeuta Ocupacional" },
-  { value: "fonoaudiologo", label: "Fonoaudiólogo" },
-  { value: "educador-fisico", label: "Educador Físico" },
-  { value: "nutricionista", label: "Nutricionista" },
-  { value: "pedagogo", label: "Pedagogo" },
-  { value: "outro", label: "Outro" },
-];
-
 export default function InviteStudentPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [user, setUser] = useState<{ email: string; role?: string } | null>(null);
   const [email, setEmail] = useState("");
-  const [categoria, setCategoria] = useState("");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ email?: string; categoria?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string }>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,7 +49,6 @@ export default function InviteStudentPage() {
     const next: Record<string, string> = {};
     if (!email.trim()) next.email = "Informe o e-mail do aluno.";
     else if (!isValidEmail(email)) next.email = "E-mail inválido.";
-    if (!categoria) next.categoria = "Selecione a categoria.";
     setFieldErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -77,13 +64,12 @@ export default function InviteStudentPage() {
     // P0 SEC (FRONTEND SECURITY CHECKER): POST /api/v1/invites
     // Backend PR #32 @ 2231cfc - locked contract
     // - Bearer JWT required (professional only)
-    // - Backend validates category against whitelist
+    // - Backend derives category from ProfessionalProfile JWT (owner lock)
     // - Backend generates opaque single-use hashed token with TTL
     // - Returns { invite_url, expires_at } (no code field)
     // - 1 active pro per category (backend enforces)
     const result = await apiPostAuth<InviteResponse>("/api/v1/invites", {
       student_email: email.trim().toLowerCase(),
-      category: categoria,
     });
 
     setSubmitting(false);
@@ -107,7 +93,6 @@ export default function InviteStudentPage() {
       
       setInviteUrl(inviteUrl);
       setEmail("");
-      setCategoria("");
       return;
     }
 
@@ -219,30 +204,6 @@ export default function InviteStudentPage() {
             />
             {fieldErrors.email ? (
               <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
-            ) : null}
-          </div>
-
-          <div>
-            <label htmlFor="categoria" className="mb-1 block text-sm font-medium text-slate-700">
-              Categoria
-            </label>
-            <select
-              id="categoria"
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-              disabled={submitting}
-              required
-              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-slate-900 transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:cursor-not-allowed disabled:bg-slate-100"
-            >
-              <option value="">Selecione a categoria</option>
-              {CATEGORIES.map((cat) => (
-                <option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.categoria ? (
-              <p className="mt-1 text-sm text-red-600">{fieldErrors.categoria}</p>
             ) : null}
           </div>
 

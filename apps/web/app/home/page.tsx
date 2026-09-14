@@ -392,7 +392,7 @@ export default function HomePage() {
               Planos
             </button>
             <FlowerButton
-              href="mailto:contact@beorigo.app?subject=Interesse%20em%20beOrigo%20para%20profissionais"
+              href="/cadastro/profissional"
               className="text-base px-5 py-3.5 h-[52px]"
             >
               Para profissionais 1:1
@@ -449,7 +449,7 @@ export default function HomePage() {
               Planos
             </button>
             <FlowerButton
-              href="mailto:contact@beorigo.app?subject=Interesse%20em%20beOrigo%20para%20profissionais"
+              href="/cadastro/profissional"
               className="mt-2 w-full text-base px-5 py-3.5 h-[52px]"
             >
               Para profissionais 1:1
@@ -500,7 +500,7 @@ export default function HomePage() {
 
           <div className="flex flex-wrap items-center justify-center gap-3">
             <FlowerButton
-              href="mailto:contact@beorigo.app?subject=Interesse%20em%20beOrigo%20para%20profissionais"
+              href="/cadastro/profissional"
               className="text-base px-5 py-3.5 h-[52px]"
             >
               Para profissionais 1:1
@@ -659,15 +659,18 @@ export default function HomePage() {
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Registro clínico mínimo</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Trial 14 dias</span></li>
             </ul>
-            <FlowerButton
-              asButton
-              className="w-full text-base px-5 py-3.5 mt-auto"
-              onClick={() => {
-                window.location.href = "/checkout?plan=start";
-              }}
-            >
-              Começar trial de 14 dias
-            </FlowerButton>
+            <div className="mt-auto flex flex-col gap-2">
+              <p className="text-xs text-center text-[var(--color-ink-500)]">Trial de 14 dias</p>
+              <FlowerButton
+                asButton
+                className="w-full text-base px-5 py-3.5"
+                onClick={() => {
+                  window.location.href = "/checkout?plan=start";
+                }}
+              >
+                Assinar Start
+              </FlowerButton>
+            </div>
           </div>
 
           <div className="plan-frame plan-frame--featured bg-white border-2 border-[var(--brand-primary)] rounded-2xl p-8 flex flex-col gap-6 shadow-[0px_16px_40px_-4px_rgba(46,56,51,0.15)] relative">
@@ -777,13 +780,13 @@ export default function HomePage() {
               <div className="flex flex-wrap gap-3 justify-center md:justify-start">
                 <a
                   href="/dashboard/professor/indicacao"
-                  className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[var(--brand-primary)] text-white font-medium hover:bg-[#7da890] transition-colors"
+                  className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-[var(--brand-primary)] text-white font-medium hover:bg-[var(--color-green-600)] transition-all duration-200 hover:shadow-[0_6px_16px_-2px_rgba(89,140,107,0.35)]"
                 >
                   Pegar meu link
                 </a>
                 <a
                   href="/termos-saas#indicacao"
-                  className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-white border border-[var(--brand-primary)] text-[var(--brand-primary)] font-medium hover:bg-[#f5f5f0] transition-colors"
+                  className="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-white border border-[var(--brand-primary)] text-[var(--brand-primary)] font-medium hover:bg-[#e5f0e8] transition-all duration-200 hover:border-[var(--color-green-600)]"
                 >
                   Saiba como indicar
                 </a>
@@ -835,7 +838,7 @@ export default function HomePage() {
             Agende uma conversa com nosso time e veja como o beOrigo transforma a relação profissional-aluno através de HEP estruturado, adesão visível e registro leve.
           </p>
           <FlowerButton
-            href="mailto:contact@beorigo.app?subject=Solicita%C3%A7%C3%A3o%20de%20consulta%201:1%20-%20beOrigo"
+            href="/cadastro/profissional"
             size="md"
             className="text-lg px-8 py-4"
           >
