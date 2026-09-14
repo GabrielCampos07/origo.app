@@ -72,7 +72,7 @@ export default function TermosSaaSPage() {
         <section>
           <h2 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-4">2. Trial de 14 dias</h2>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
-            Todos os planos incluem um período de trial de <strong>14 dias</strong>. Durante o trial, você tem acesso completo às funcionalidades do plano e pode cancelar sem custo a qualquer momento.
+            O trial de <strong>14 dias</strong> está disponível <strong>apenas com cupom de indicação válido</strong>. Durante o trial, você tem acesso completo às funcionalidades do plano e pode cancelar sem custo a qualquer momento. Sem cupom de indicação, a cobrança inicia imediatamente.
           </p>
         </section>
 
@@ -112,7 +112,7 @@ export default function TermosSaaSPage() {
           <div className="bg-[#e5f0e8] border border-[#c7dbcc] rounded-lg p-6 mb-4">
             <h3 className="font-semibold text-lg text-[var(--color-ink-900)] mb-3">Para o Indicado (novo profissional)</h3>
             <p className="text-base text-[var(--color-ink-700)]">
-              Ao usar um código de cupom de indicação, o novo profissional recebe <strong>1 mês grátis</strong> de qualquer plano.
+              Ao usar um código de cupom de indicação, o novo profissional recebe <strong>14 dias grátis</strong> de qualquer plano.
             </p>
           </div>
 
@@ -122,7 +122,7 @@ export default function TermosSaaSPage() {
               O profissional que indicou recebe <strong>15% recorrente</strong> sobre o valor cobrado do indicado:
             </p>
             <ul className="list-disc list-inside space-y-2 text-sm text-[var(--color-ink-600)]">
-              <li><strong>0% durante o mês grátis</strong> (trial ou cupom) — sem comissão no período free</li>
+              <li><strong>0% durante o período grátis</strong> (cupom de indicação) — sem comissão no período free</li>
               <li><strong>15% do valor cobrado</strong> enquanto o indicado mantiver assinatura paga ativa</li>
               <li>Comissão continua mensalmente ou anualmente conforme o plano do indicado</li>
               <li>Se o indicado cancelar, as comissões futuras são encerradas</li>

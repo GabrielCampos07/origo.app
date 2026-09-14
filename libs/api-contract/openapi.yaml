@@ -1143,9 +1143,16 @@ paths:
         - Stripe Customer metadata origo_user_id set for webhook processing
         - success/cancel URLs constructed server-side from FRONTEND_URL env
         
+        **P0 TRIAL SECURITY LOCK:**
+        - 14-day trial (trial_period_days: 14) ONLY via valid referral/indication code
+        - Regular paid signup has NO trial_period_days (fail-closed)
+        - Server-side validation prevents client from forcing trial
+        - Invalid/missing referral = no trial, no discount
+        
         **Business Rules:**
-        - 14 day trial included in subscription
-        - referral_code applies 100% off first month via Stripe coupon
+        - 14-day trial ONLY via valid referral/indication code (P0 SECURITY LOCK)
+        - Regular paid signup has NO trial_period_days (fail-closed)
+        - referral_code applies 100% off first month via Stripe coupon + 14-day trial
         - Referral attribution recorded in DB before checkout session created
         - Available plans: start, pro, clinic
         - Billing cycles: monthly, annual
@@ -1311,6 +1318,562 @@ paths:
                 message: Invalid webhook signature
         '500':
           description: Internal server error (Stripe will retry)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/professional/students:
+    get:
+      summary: List students with adherence
+      description: |
+        PROFESSIONAL-only roster of ACTIVE enrollments.
+
+        Adherence = completed COMPLETED sessions in the current ISO week (Monday UTC)
+        divided by the active program `targetSessionsPerWeek`, capped at 100.
+      operationId: listProfessionalStudents
+      tags: [HEP Professional]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Student roster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfessionalStudentsResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / payment_required / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/professional/students/{id}:
+    get:
+      summary: Student detail + active program
+      description: |
+        Ficha do aluno: enrollment ACTIVE, programa ativo, última sessão e adesão.
+        IDOR fail-closed: unknown or non-owned student returns generic 404.
+      operationId: getProfessionalStudent
+      tags: [HEP Professional]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Student detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfessionalStudentDetailResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / payment_required / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Student not found (or not an ACTIVE enrollment of this professional)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/professional/dashboard:
+    get:
+      summary: Professional HEP dashboard stats
+      operationId: getProfessionalDashboard
+      tags: [HEP Professional]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Aggregated stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfessionalDashboardResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / payment_required / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/professional/students/{studentId}/programs:
+    post:
+      summary: Create first active HEP for a student
+      description: |
+        Creates the ACTIVE program for an ACTIVE enrollment.
+        Returns 409 if a program already exists.
+      operationId: createProfessionalProgram
+      tags: [HEP Professional]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProgramRequest'
+      responses:
+        '200':
+          description: Program created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramEnvelope'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / payment_required / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Active program already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/professional/programs/{programId}:
+    put:
+      summary: Update program metadata and sync exercises
+      description: |
+        Updates title / phaseLabel / targetSessionsPerWeek and optionally replaces
+        the visible exercise list.
+
+        Sync rules:
+        - items without `id` are created
+        - items with `id` are updated
+        - visible items omitted from the payload are soft-removed (`removedAt`)
+        - exercises that already have a SessionExerciseLog **cannot** be removed
+          (422 + `blocked_exercise_ids`)
+      operationId: updateProfessionalProgram
+      tags: [HEP Professional]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: programId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProgramRequest'
+      responses:
+        '200':
+          description: Program updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgramEnvelope'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / payment_required / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Program not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error or delete-with-log blocked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlockedExerciseDeleteError'
+
+  /api/v1/professional/students/{studentId}/chart:
+    get:
+      summary: Clinical chart (notes + pain timeline)
+      operationId: getProfessionalStudentChart
+      tags: [HEP Professional]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notes + VAS timeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentChartResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / payment_required / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/professional/students/{studentId}/notes:
+    post:
+      summary: Create clinical note
+      description: Append-only ClinicalNote on an ACTIVE enrollment.
+      operationId: createProfessionalStudentNote
+      tags: [HEP Professional]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClinicalNoteRequest'
+      responses:
+        '200':
+          description: Note created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalNoteEnvelope'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / payment_required / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/me/program:
+    get:
+      summary: Active program + today summary
+      description: STUDENT-only. Returns active HEP, exercises, today cards, and current IN_PROGRESS session.
+      operationId: getMyProgram
+      tags: [HEP Student]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Program (or null if none)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentProgramResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/me/today-summary:
+    get:
+      summary: Today / weekly HEP cards
+      description: Same payload as `today` on GET /me/program.
+      operationId: getMyTodaySummary
+      tags: [HEP Student]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Today summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodaySummaryEnvelope'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/me/sessions:
+    post:
+      summary: Start or resume today's session
+      description: Creates an IN_PROGRESS session or returns the existing one for the active program.
+      operationId: startMySession
+      tags: [HEP Student]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Session started or resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartSessionResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No active program
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/me/sessions/{sessionId}/exercises/{exerciseId}/complete:
+    post:
+      summary: Mark exercise complete
+      description: Idempotent upsert of SessionExerciseLog for the student's IN_PROGRESS session.
+      operationId: completeMySessionExercise
+      tags: [HEP Student]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: exerciseId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                setsCompleted:
+                  type: integer
+                  minimum: 0
+                  maximum: 50
+      responses:
+        '200':
+          description: Exercise logged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionExerciseLogEnvelope'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session or exercise not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Session already completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/me/sessions/{sessionId}/complete:
+    post:
+      summary: Complete session
+      description: Marks the session COMPLETED. Optional VAS `painLevel` 0–10.
+      operationId: completeMySession
+      tags: [HEP Student]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                painLevel:
+                  type: integer
+                  minimum: 0
+                  maximum: 10
+      responses:
+        '200':
+          description: Session completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompletedSessionEnvelope'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Session already completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Invalid painLevel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/me/progress:
+    get:
+      summary: Dynamic progress cards
+      description: Adherence, weekly sessions, totals, and VAS cards (pain cards omitted when no data).
+      operationId: getMyProgress
+      tags: [HEP Student]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Progress cards
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressCardsResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / legal_acceptance_required
           content:
             application/json:
               schema:
@@ -1573,6 +2136,465 @@ components:
         - checkout_url
         - session_id
 
+    ProgramExercise:
+      type: object
+      properties:
+        id:
+          type: string
+        orderIndex:
+          type: integer
+        name:
+          type: string
+        sets:
+          type: integer
+        reps:
+          type: string
+          description: Free-text prescription (e.g. "12", "8-10", "30s")
+        notes:
+          type: string
+          nullable: true
+        precautions:
+          type: string
+          nullable: true
+      required: [id, orderIndex, name, sets, reps]
+
+    ProgramExerciseInput:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Omit to create a new exercise line
+        orderIndex:
+          type: integer
+          minimum: 0
+        name:
+          type: string
+        sets:
+          type: integer
+          minimum: 1
+          maximum: 50
+        reps:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        precautions:
+          type: string
+          nullable: true
+      required: [orderIndex, name, sets, reps]
+
+    Program:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        phaseLabel:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ACTIVE]
+        targetSessionsPerWeek:
+          type: integer
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramExercise'
+      required: [id, title, status, targetSessionsPerWeek, exercises]
+
+    ProgramEnvelope:
+      type: object
+      properties:
+        program:
+          $ref: '#/components/schemas/Program'
+      required: [program]
+
+    CreateProgramRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        phaseLabel:
+          type: string
+          nullable: true
+        targetSessionsPerWeek:
+          type: integer
+          minimum: 1
+          maximum: 14
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramExerciseInput'
+      required: [title, targetSessionsPerWeek]
+
+    UpdateProgramRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        phaseLabel:
+          type: string
+          nullable: true
+        targetSessionsPerWeek:
+          type: integer
+          minimum: 1
+          maximum: 14
+        exercises:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgramExerciseInput'
+
+    BlockedExerciseDeleteError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Validation Error
+        message:
+          type: string
+          example: Cannot remove exercises that already have session logs
+        blocked_exercise_ids:
+          type: array
+          items:
+            type: string
+      required: [error, message]
+
+    WorkoutSessionSummary:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [IN_PROGRESS, COMPLETED]
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        painLevel:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 10
+
+    ProfessionalStudentListItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+        email:
+          type: string
+        enrollmentId:
+          type: string
+        category:
+          type: string
+          enum: [FISIOTERAPIA, EDUCACAO_FISICA, PERSONAL]
+        startedAt:
+          type: string
+          format: date-time
+        programId:
+          type: string
+          nullable: true
+        targetSessionsPerWeek:
+          type: integer
+          nullable: true
+        completedSessionsThisWeek:
+          type: integer
+        adherencePercent:
+          type: integer
+        lastSession:
+          $ref: '#/components/schemas/WorkoutSessionSummary'
+      required:
+        - id
+        - email
+        - enrollmentId
+        - category
+        - adherencePercent
+
+    ProfessionalStudentsResponse:
+      type: object
+      properties:
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfessionalStudentListItem'
+      required: [students]
+
+    ProfessionalStudentDetailResponse:
+      type: object
+      properties:
+        student:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+              nullable: true
+            email:
+              type: string
+        enrollment:
+          type: object
+          properties:
+            id:
+              type: string
+            category:
+              type: string
+            status:
+              type: string
+            startedAt:
+              type: string
+              format: date-time
+        program:
+          allOf:
+            - $ref: '#/components/schemas/Program'
+          nullable: true
+        lastSession:
+          $ref: '#/components/schemas/WorkoutSessionSummary'
+        completedSessionsThisWeek:
+          type: integer
+        adherencePercent:
+          type: integer
+      required: [student, enrollment, program, lastSession, completedSessionsThisWeek, adherencePercent]
+
+    ProfessionalDashboardResponse:
+      type: object
+      properties:
+        activeStudents:
+          type: integer
+        averageAdherencePercent:
+          type: integer
+        sessionsCompletedThisWeek:
+          type: integer
+        studentsBelowAdherence:
+          type: integer
+          description: Count of students with a program and adherence under 50%
+      required:
+        - activeStudents
+        - averageAdherencePercent
+        - sessionsCompletedThisWeek
+        - studentsBelowAdherence
+
+    ClinicalNote:
+      type: object
+      properties:
+        id:
+          type: string
+        conduta:
+          type: string
+        evolucao:
+          type: string
+        informacoesPertinentes:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        professionalId:
+          type: string
+        studentId:
+          type: string
+      required: [id, conduta, evolucao, informacoesPertinentes, createdAt]
+
+    CreateClinicalNoteRequest:
+      type: object
+      properties:
+        conduta:
+          type: string
+        evolucao:
+          type: string
+        informacoesPertinentes:
+          type: string
+      required: [conduta, evolucao, informacoesPertinentes]
+
+    ClinicalNoteEnvelope:
+      type: object
+      properties:
+        note:
+          $ref: '#/components/schemas/ClinicalNote'
+      required: [note]
+
+    StudentChartResponse:
+      type: object
+      properties:
+        notes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicalNote'
+        painTimeline:
+          type: array
+          items:
+            type: object
+            properties:
+              sessionId:
+                type: string
+              completedAt:
+                type: string
+                format: date-time
+                nullable: true
+              painLevel:
+                type: integer
+                nullable: true
+      required: [notes, painTimeline]
+
+    TodaySummary:
+      type: object
+      nullable: true
+      properties:
+        programTitle:
+          type: string
+        phaseLabel:
+          type: string
+          nullable: true
+        targetSessionsPerWeek:
+          type: integer
+        completedSessionsThisWeek:
+          type: integer
+        remainingSessionsThisWeek:
+          type: integer
+        adherencePercent:
+          type: integer
+        currentSessionId:
+          type: string
+          nullable: true
+        exercises:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/ProgramExercise'
+              - type: object
+                properties:
+                  completedInCurrentSession:
+                    type: boolean
+
+    TodaySummaryEnvelope:
+      type: object
+      properties:
+        today:
+          $ref: '#/components/schemas/TodaySummary'
+      required: [today]
+
+    StudentProgramResponse:
+      type: object
+      properties:
+        program:
+          allOf:
+            - $ref: '#/components/schemas/Program'
+          nullable: true
+        enrollment:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+            category:
+              type: string
+            professionalName:
+              type: string
+              nullable: true
+        today:
+          $ref: '#/components/schemas/TodaySummary'
+        currentSession:
+          allOf:
+            - $ref: '#/components/schemas/WorkoutSessionSummary'
+            - type: object
+              properties:
+                completedExerciseIds:
+                  type: array
+                  items:
+                    type: string
+
+    StartSessionResponse:
+      type: object
+      properties:
+        session:
+          allOf:
+            - $ref: '#/components/schemas/WorkoutSessionSummary'
+            - type: object
+              properties:
+                completedExerciseIds:
+                  type: array
+                  items:
+                    type: string
+        resumed:
+          type: boolean
+        exercises:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/ProgramExercise'
+              - type: object
+                properties:
+                  completed:
+                    type: boolean
+      required: [session, resumed, exercises]
+
+    SessionExerciseLogEnvelope:
+      type: object
+      properties:
+        log:
+          type: object
+          properties:
+            id:
+              type: string
+            sessionId:
+              type: string
+            programExerciseId:
+              type: string
+            setsCompleted:
+              type: integer
+            completedAt:
+              type: string
+              format: date-time
+      required: [log]
+
+    CompletedSessionEnvelope:
+      type: object
+      properties:
+        session:
+          allOf:
+            - $ref: '#/components/schemas/WorkoutSessionSummary'
+            - type: object
+              properties:
+                completedExerciseIds:
+                  type: array
+                  items:
+                    type: string
+      required: [session]
+
+    ProgressCard:
+      type: object
+      properties:
+        key:
+          type: string
+          enum: [adherence, sessions_this_week, total_completed, last_pain, avg_pain]
+        title:
+          type: string
+        value:
+          type: number
+        unit:
+          type: string
+        subtitle:
+          type: string
+      required: [key, title, value, unit, subtitle]
+
+    ProgressCardsResponse:
+      type: object
+      properties:
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgressCard'
+      required: [cards]
+
   securitySchemes:
     BearerAuth:
       type: http
@@ -1606,3 +2628,7 @@ tags:
     description: Referral MVP (codes, validation, status, payouts)
   - name: Checkout
     description: Stripe Checkout Session creation for subscriptions
+  - name: HEP Professional
+    description: Slice 2–3 HEP — professional roster, editor, dashboard, and clinical chart
+  - name: HEP Student
+    description: Slice 2–3 HEP — student program, session execution, VAS, and progress

@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/alunos/convidar",
+        source: "/alunos/:path*",
         headers: [
           { key: "Referrer-Policy", value: "no-referrer" },
           { key: "X-Content-Type-Options", value: "nosniff" },

@@ -217,12 +217,20 @@ export default function InviteStudentPage() {
         </form>
 
         <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-6">
-          <button
-            onClick={() => router.push("/dashboard/professor")}
-            className="text-sm text-teal-700 hover:text-teal-900"
-          >
-            ← Voltar ao dashboard
-          </button>
+          <div className="flex flex-wrap gap-4">
+            <button
+              onClick={() => router.push("/dashboard/professor")}
+              className="text-sm text-teal-700 hover:text-teal-900"
+            >
+              ← Voltar ao dashboard
+            </button>
+            <button
+              onClick={() => router.push("/alunos")}
+              className="text-sm text-teal-700 hover:text-teal-900"
+            >
+              Ver alunos
+            </button>
+          </div>
           <button onClick={handleLogout} className="text-sm text-slate-600 hover:text-slate-900">
             Sair
           </button>

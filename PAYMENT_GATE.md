@@ -365,33 +365,45 @@ async function createInvite(token: string, data: any) {
 4. **Test:** Verify gate blocks unpaid users, allows paid users
 5. **Monitor:** Check Stripe webhook logs for event processing
 
-### Backfill Script (Future)
+### Backfill Script
 
-```typescript
-// Example backfill script (not included in PR)
-async function backfillStripeCustomers() {
-  const users = await prisma.user.findMany({
-    where: { role: 'PROFESSIONAL', stripeCustomerId: null },
-  });
-  
-  for (const user of users) {
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    if (customers.data.length > 0) {
-      const customer = customers.data[0];
-      const subscriptions = await stripe.subscriptions.list({ customer: customer.id, limit: 1 });
-      const isActive = subscriptions.data.some(s => s.status === 'active' || s.status === 'trialing');
-      
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          stripeCustomerId: customer.id,
-          subscriptionActive: isActive,
-        },
-      });
-    }
-  }
-}
+**File:** `apps/api/scripts/backfill-subscription-active.ts`
+
+A production-ready script to reconcile `subscriptionActive` from Stripe as the source of truth.
+
+**Context:** After payment-gate migration (#53), existing paid professionals may have `subscriptionActive=false`. This script reconciles the field using Stripe subscriptions as the source of truth.
+
+**Usage:**
+
+```bash
+# Local (with DATABASE_URL + STRIPE_SECRET_KEY)
+export DATABASE_URL="postgresql://..."
+export STRIPE_SECRET_KEY="sk_..."
+npx tsx scripts/backfill-subscription-active.ts
+
+# Dry run (default - logs only, no writes)
+DRY_RUN=1 npx tsx scripts/backfill-subscription-active.ts
+
+# Apply changes
+APPLY=1 npx tsx scripts/backfill-subscription-active.ts
+
+# Fly SSH
+fly ssh console -a origo-api-staging
+cd /app
+APPLY=1 node dist/scripts/backfill-subscription-active.js
 ```
+
+**Logic:**
+1. Find users with `stripeCustomerId` set
+2. Check Stripe subscription status (active/trialing)
+3. Set `subscriptionActive=true` when subscription is active
+4. Also search Stripe customers with `metadata.origo_user_id` (fallback for users without `stripeCustomerId`)
+
+**Safety:**
+- DRY_RUN=1 by default (log only, no writes)
+- Never logs full emails or tokens
+- Logs only user ID + customer ID prefix (first 12 chars)
+- Idempotent: safe to run multiple times
 
 ---
 

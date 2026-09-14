@@ -11,6 +11,7 @@
     "api:dev": "npm run dev --workspace=apps/api",
     "api:build": "npm run build --workspace=apps/api",
     "api:typecheck": "npm run typecheck --workspace=apps/api",
+    "api:test": "npm run test --workspace=apps/api",
     "web:dev": "npm run dev --workspace=apps/web",
     "web:build": "npm run build --workspace=apps/web",
     "web:typecheck": "npm run typecheck --workspace=apps/web",

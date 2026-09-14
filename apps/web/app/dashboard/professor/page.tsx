@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAccessToken, getStoredUser, clearAuthSession, getMissingDocVersions } from "@/lib/auth-storage";
+import { getProfessionalDashboard, type DashboardStats } from "@/lib/professional";
 
 export default function ProfessorDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<{ email: string; role?: string } | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -38,6 +40,10 @@ export default function ProfessorDashboardPage() {
 
     setUser(storedUser);
     setLoading(false);
+
+    getProfessionalDashboard().then((result) => {
+      if (result.ok) setStats(result.data);
+    });
   }, [router]);
 
   function handleLogout() {
@@ -75,6 +81,27 @@ export default function ProfessorDashboardPage() {
           </p>
         </div>
 
+        {stats ? (
+          <div className="mb-8 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Alunos ativos</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-900">{stats.activeStudents}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Adesão média</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-900">{Math.round(stats.averageAdherencePercent)}%</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Sessões na semana</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-900">{stats.sessionsThisWeek}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Abaixo da meta</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-900">{stats.studentsBelowAdherence}</p>
+            </div>
+          </div>
+        ) : null}
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
           {/* 1. Convidar */}
           <button
@@ -100,14 +127,14 @@ export default function ProfessorDashboardPage() {
             <p className="text-sm text-slate-600">Crie um link de convite para seu aluno.</p>
           </button>
 
-          {/* 2. HEP (Slice 2 - stub for now) */}
+          {/* 2. HEP — lista de alunos + programas */}
           <button
-            disabled
-            className="flex flex-col items-start rounded-lg border border-slate-200 bg-slate-50 p-6 text-left opacity-60 cursor-not-allowed"
+            onClick={() => router.push("/alunos")}
+            className="flex flex-col items-start rounded-lg border border-teal-200 bg-teal-50 p-6 text-left transition-colors hover:bg-teal-100"
           >
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-200">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-teal-600">
               <svg
-                className="h-6 w-6 text-slate-500"
+                className="h-6 w-6 text-white"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -121,7 +148,7 @@ export default function ProfessorDashboardPage() {
               </svg>
             </div>
             <h3 className="mb-1 text-lg font-semibold text-slate-900">HEP</h3>
-            <p className="text-sm text-slate-600">Em breve - Gerenciar programas de exercícios.</p>
+            <p className="text-sm text-slate-600">Alunos, programas e adesão.</p>
           </button>
 
           {/* 3. Planos */}
