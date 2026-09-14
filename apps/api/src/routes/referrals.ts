@@ -27,15 +27,34 @@ const prisma = new PrismaClient();
  */
 function extractUserId(request: FastifyRequest): string | null {
   const authHeader = request.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  
+  if (!authHeader) {
+    console.warn('[REFERRAL AUTH] No Authorization header present');
+    return null;
+  }
+  
+  if (!authHeader.startsWith('Bearer ')) {
+    console.warn('[REFERRAL AUTH] Authorization header does not start with "Bearer ":', authHeader.substring(0, 20));
     return null;
   }
 
   try {
     const token = authHeader.substring(7);
+    if (!token || token.trim() === '') {
+      console.warn('[REFERRAL AUTH] Empty token after "Bearer " prefix');
+      return null;
+    }
+    
     const payload = verifyAccessToken(token);
+    
+    if (!payload || !payload.userId) {
+      console.warn('[REFERRAL AUTH] JWT payload missing userId:', payload);
+      return null;
+    }
+    
     return payload.userId;
   } catch (error) {
+    console.error('[REFERRAL AUTH] JWT verification failed:', error instanceof Error ? error.message : error);
     return null;
   }
 }
@@ -122,14 +141,19 @@ export async function referralRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/api/v1/referrals/code',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      fastify.log.info('[REFERRAL] GET /api/v1/referrals/code - Start');
+      
       // SECURITY: Authentication required
       const userId = extractUserId(request);
       if (!userId) {
+        fastify.log.warn('[REFERRAL] GET /api/v1/referrals/code - Auth failed, returning 401');
         return reply.code(401).send({
           error: 'Unauthorized',
           message: 'Valid authentication token required',
         });
       }
+
+      fastify.log.info(`[REFERRAL] GET /api/v1/referrals/code - User authenticated: ${userId}`);
 
       // SECURITY: PROFESSIONAL-only enforcement
       const isPro = await isProfessionalUser(userId);
@@ -210,14 +234,19 @@ export async function referralRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/api/v1/referrals/status',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      fastify.log.info('[REFERRAL] GET /api/v1/referrals/status - Start');
+      
       // SECURITY: Authentication required
       const userId = extractUserId(request);
       if (!userId) {
+        fastify.log.warn('[REFERRAL] GET /api/v1/referrals/status - Auth failed, returning 401');
         return reply.code(401).send({
           error: 'Unauthorized',
           message: 'Valid authentication token required',
         });
       }
+
+      fastify.log.info(`[REFERRAL] GET /api/v1/referrals/status - User authenticated: ${userId}`);
 
       // SECURITY: PROFESSIONAL-only enforcement
       const isPro = await isProfessionalUser(userId);

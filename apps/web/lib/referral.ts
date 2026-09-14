@@ -17,23 +17,31 @@ import { apiGet, apiPostAuth, type ApiResult } from "./api";
 export type ReferralCode = {
   code: string;
   created_at: string;
-  is_active: boolean;
 };
 
 export type ReferralStatus = {
-  total_referred: number;
-  active_subscribers: number;
-  pending_payout: number; // in cents
-  total_earned: number; // in cents, lifetime
-  referred_users: ReferredUser[];
+  referral_code: {
+    code: string;
+    created_at: string;
+  };
+  referrals: ReferredUser[];
+  payouts: Payout[];
+  total_payouts_cents: number;
 };
 
 export type ReferredUser = {
-  id: string;
-  email_prefix: string; // e.g. "j***@example.com" for privacy
-  status: "trial" | "active" | "cancelled";
-  subscribed_at: string;
-  commission_earned: number; // in cents
+  referred_user_id: string;
+  status: "PENDING" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+  created_at: string;
+  free_month_ends_at: string | null;
+};
+
+export type Payout = {
+  referral_id: string;
+  amount_cents: number;
+  currency: string;
+  commission_rate_bps: number;
+  created_at: string;
 };
 
 export type CouponValidation = {

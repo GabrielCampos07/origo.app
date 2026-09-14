@@ -207,25 +207,25 @@ export default function ReferralDashboardPage() {
             <div className="bg-white rounded-xl border border-[#d1e5d9] p-6 shadow-sm">
               <p className="text-sm text-[var(--color-ink-600)] mb-2">Total indicados</p>
               <p className="text-3xl font-bold text-[var(--color-ink-900)]">
-                {referralStatus.total_referred}
+                {referralStatus.referrals.length}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-[#d1e5d9] p-6 shadow-sm">
               <p className="text-sm text-[var(--color-ink-600)] mb-2">Assinantes ativos</p>
               <p className="text-3xl font-bold text-[var(--brand-primary)]">
-                {referralStatus.active_subscribers}
+                {referralStatus.referrals.filter(r => r.status === "ACTIVE").length}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-[#d1e5d9] p-6 shadow-sm">
-              <p className="text-sm text-[var(--color-ink-600)] mb-2">A receber</p>
+              <p className="text-sm text-[var(--color-ink-600)] mb-2">Comissões pagas</p>
               <p className="text-3xl font-bold text-[var(--color-ink-900)]">
-                {formatCurrency(referralStatus.pending_payout)}
+                {formatCurrency(referralStatus.total_payouts_cents)}
               </p>
             </div>
             <div className="bg-white rounded-xl border border-[#d1e5d9] p-6 shadow-sm">
-              <p className="text-sm text-[var(--color-ink-600)] mb-2">Total ganho</p>
+              <p className="text-sm text-[var(--color-ink-600)] mb-2">Comissões</p>
               <p className="text-3xl font-bold text-[var(--color-ink-900)]">
-                {formatCurrency(referralStatus.total_earned)}
+                {referralStatus.payouts.length}
               </p>
             </div>
           </div>
@@ -237,50 +237,62 @@ export default function ReferralDashboardPage() {
             Seus indicados
           </h2>
 
-          {referralStatus && referralStatus.referred_users.length > 0 ? (
+          {referralStatus && referralStatus.referrals.length > 0 ? (
             <div className="space-y-3">
-              {referralStatus.referred_users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border border-[#d1e5d9] hover:border-[var(--brand-primary)]/30 transition-colors"
-                >
-                  <div className="flex-1">
-                    <p className="font-medium text-[var(--color-ink-900)] mb-1">
-                      {user.email_prefix}
-                    </p>
-                    <p className="text-sm text-[var(--color-ink-600)]">
-                      Inscrito em {new Date(user.subscribed_at).toLocaleDateString("pt-BR")}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <p className="text-sm text-[var(--color-ink-600)] mb-1">Comissão gerada</p>
-                      <p className="font-semibold text-[var(--color-ink-900)]">
-                        {formatCurrency(user.commission_earned)}
+              {referralStatus.referrals.map((referral) => {
+                const referralPayouts = referralStatus.payouts.filter(p => p.referral_id === referral.referred_user_id);
+                const totalEarned = referralPayouts.reduce((sum, p) => sum + p.amount_cents, 0);
+                
+                return (
+                  <div
+                    key={referral.referred_user_id}
+                    className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border border-[#d1e5d9] hover:border-[var(--brand-primary)]/30 transition-colors"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--color-ink-900)] mb-1">
+                        ID: {referral.referred_user_id.slice(0, 8)}...
                       </p>
+                      <p className="text-sm text-[var(--color-ink-600)]">
+                        Inscrito em {new Date(referral.created_at).toLocaleDateString("pt-BR")}
+                      </p>
+                      {referral.free_month_ends_at && (
+                        <p className="text-xs text-[var(--color-ink-500)]">
+                          Período grátis até {new Date(referral.free_month_ends_at).toLocaleDateString("pt-BR")}
+                        </p>
+                      )}
                     </div>
 
-                    <div>
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                          user.status === "active"
-                            ? "bg-[#e5f0e8] text-[var(--brand-primary)]"
-                            : user.status === "trial"
-                              ? "bg-blue-50 text-blue-700"
-                              : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {user.status === "active"
-                          ? "Ativo"
-                          : user.status === "trial"
-                            ? "Trial"
-                            : "Cancelado"}
-                      </span>
+                    <div className="flex items-center gap-6">
+                      <div className="text-right">
+                        <p className="text-sm text-[var(--color-ink-600)] mb-1">Comissão gerada</p>
+                        <p className="font-semibold text-[var(--color-ink-900)]">
+                          {formatCurrency(totalEarned)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                            referral.status === "ACTIVE"
+                              ? "bg-[#e5f0e8] text-[var(--brand-primary)]"
+                              : referral.status === "PENDING"
+                                ? "bg-blue-50 text-blue-700"
+                                : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {referral.status === "ACTIVE"
+                            ? "Ativo"
+                            : referral.status === "PENDING"
+                              ? "Pendente"
+                              : referral.status === "COMPLETED"
+                                ? "Completo"
+                                : "Cancelado"}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12">
