@@ -146,6 +146,114 @@ components:
       required:
         - message
 
+    RegisterProfessionalRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Dr. João Silva
+        email:
+          type: string
+          format: email
+          example: joao@example.com
+        password:
+          type: string
+          format: password
+          minLength: 12
+          example: mySecurePassword123
+        category:
+          type: string
+          enum: [FISIOTERAPIA, EDUCACAO_FISICA, PERSONAL]
+          example: FISIOTERAPIA
+      required:
+        - name
+        - email
+        - password
+        - category
+
+    RegisterStudentRequest:
+      type: object
+      properties:
+        invite_token:
+          type: string
+          description: Opaque invite token from professional
+          example: abc123def456...
+        name:
+          type: string
+          example: Maria Santos
+        email:
+          type: string
+          format: email
+          description: Student email (validated, unique citext)
+          example: maria@example.com
+        password:
+          type: string
+          format: password
+          minLength: 12
+          example: mySecurePassword123
+      required:
+        - invite_token
+        - name
+        - email
+        - password
+
+    CreateInviteRequest:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: [FISIOTERAPIA, EDUCACAO_FISICA, PERSONAL]
+          description: Professional category (must match authenticated user's profile)
+          example: FISIOTERAPIA
+      required:
+        - category
+
+    CreateInviteResponse:
+      type: object
+      properties:
+        invite_url:
+          type: string
+          description: Opaque invite token (returned once, never stored plaintext)
+          example: abc123def456ghi789...
+        expires_at:
+          type: string
+          format: date-time
+          description: Token expiration timestamp (30 days from creation)
+      required:
+        - invite_url
+        - expires_at
+
+    ValidateInviteRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Opaque invite token to validate (in body, NOT URL)
+          example: abc123def456ghi789...
+      required:
+        - token
+
+    ValidateInviteResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: Whether the invite is valid
+          example: true
+        state:
+          type: string
+          enum: [valid, expired, used, invalid]
+          description: Generic invite state (no PII exposure)
+          example: valid
+        category:
+          type: string
+          enum: [FISIOTERAPIA, EDUCACAO_FISICA, PERSONAL]
+          description: Professional category (only returned for valid invites)
+          example: FISIOTERAPIA
+      required:
+        - valid
+        - state
+
 paths:
   /health:
     get:
@@ -367,6 +475,330 @@ paths:
                 message: Password must be at least 12 characters
         '429':
           description: Rate limit excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/register/professional:
+    post:
+      summary: Professional registration
+      description: |
+        Registers a new professional user and creates their profile.
+        
+        **Security (Bloco A Slice 1):**
+        - User.role set to PROFESSIONAL server-side only (never client-supplied)
+        - Creates ProfessionalProfile with validated category
+        - Returns tokens like login (no separate login required)
+        - Legal acceptance required before full access (403 middleware)
+        
+        **Product Rules:**
+        - No plan gate at registration (trial starts after legal acceptance)
+        - Category must be valid enum: FISIOTERAPIA | EDUCACAO_FISICA | PERSONAL
+        
+        **Rate limits:**
+        - 5 requests/15min per IP
+      operationId: registerProfessional
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterProfessionalRequest'
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '422':
+          description: Validation error (weak password, invalid email, email exists)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid_email:
+                  summary: Invalid email format
+                  value:
+                    error: Validation Error
+                    message: Invalid email format
+                email_exists:
+                  summary: Email already registered
+                  value:
+                    error: Validation Error
+                    message: Email already registered
+                weak_password:
+                  summary: Password too short
+                  value:
+                    error: Validation Error
+                    message: Password must be at least 12 characters
+                invalid_category:
+                  summary: Invalid professional category
+                  value:
+                    error: Validation Error
+                    message: Invalid professional category
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/register/student:
+    post:
+      summary: Student registration via invite
+      description: |
+        Registers a new student user via valid invite token and creates enrollment.
+        
+        **MUST-FIX (BACKEND SECURITY):**
+        - Requires real email from request body (validated + unique citext)
+        - Email validated for format and uniqueness
+        - No temp/generated emails (must use actual student email)
+        
+        **Security (Bloco A Slice 1 - 7 LOCKED REQUIREMENTS):**
+        1. Token hash-only at rest, TTL, single-use (usedAt)
+        2. User.role = STUDENT server-side only (never client-supplied)
+        3. Generic 410/422 errors (no enumeration beyond necessary states)
+        4. Creates ACTIVE Enrollment (partial unique index enforces 1 per student+category)
+        5. Marks invite as used atomically
+        6. Student can only register via valid invite (no open signup)
+        7. professionalUserId + category derived from invite (never client-supplied)
+        
+        **Product Rules:**
+        - Student ONLY via invite link (no free signup)
+        - 1 ACTIVE enrollment per (studentUserId, category)
+        - Invite carries professionalUserId + category (server-side)
+        
+        **Rate limits:**
+        - 5 requests/15min per IP
+      operationId: registerStudent
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterStudentRequest'
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '410':
+          description: Invite invalid, expired, or already used
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid:
+                  summary: Invalid invite
+                  value:
+                    error: Gone
+                    message: Invalid or expired invite link
+                used:
+                  summary: Already used
+                  value:
+                    error: Gone
+                    message: Invite link has already been used
+                expired:
+                  summary: Expired
+                  value:
+                    error: Gone
+                    message: Invite link has expired
+        '422':
+          description: Validation error (weak password, duplicate enrollment)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid_email:
+                  summary: Invalid email format
+                  value:
+                    error: Validation Error
+                    message: Invalid email format
+                email_exists:
+                  summary: Email already registered
+                  value:
+                    error: Validation Error
+                    message: Email already registered
+                weak_password:
+                  summary: Password too short
+                  value:
+                    error: Validation Error
+                    message: Password must be at least 12 characters
+                duplicate_enrollment:
+                  summary: Duplicate active enrollment
+                  value:
+                    error: Validation Error
+                    message: Unable to complete registration
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/invites:
+    post:
+      summary: Create invite token
+      description: |
+        Creates an invite token for student enrollment (PROFESSIONAL only).
+        
+        **Security (Bloco A Slice 1 - 7 LOCKED REQUIREMENTS):**
+        1. Token hash-only at rest (SHA-256), never stores plaintext
+        2. professionalUserId from JWT sub claim only (never client-supplied)
+        3. Returns opaque token once (never logged, never exposed again)
+        4. TTL 30 days (expiresAt)
+        5. Single-use via usedAt field
+        6. PROFESSIONAL-only (403 for STUDENT users)
+        7. category validated against ProfessionalProfile
+        
+        **Product Rules:**
+        - Only PROFESSIONAL users can create invites
+        - category must match authenticated user's ProfessionalProfile.category
+        - Token returned once in response (store securely on client)
+        
+        **Rate limits:**
+        - 10 requests/15min per authenticated user
+      operationId: createInvite
+      tags:
+        - Invites
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInviteRequest'
+      responses:
+        '200':
+          description: Invite created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateInviteResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (STUDENT user or category mismatch)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                student_user:
+                  summary: Student user attempted to create invite
+                  value:
+                    error: Forbidden
+                    message: Only PROFESSIONAL users can create invites
+                category_mismatch:
+                  summary: Category doesn't match profile
+                  value:
+                    error: Validation Error
+                    message: Category must match your professional profile
+        '404':
+          description: User or professional profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error (invalid category)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/invites/validate:
+    post:
+      summary: Validate invite token
+      description: |
+        Validates an invite token without exposing PII (public endpoint).
+        
+        **SECURITY (BACKEND SECURITY P1):**
+        - Token in request body (NOT URL path/query) - prevents logging in:
+          · Server access logs
+          · Browser history
+          · Referer headers
+          · Proxy logs
+        - Generic states only: valid | expired | used | invalid
+        - No PII exposure (no professional name/email)
+        - No distinction between "not found" and "invalid"
+        - Returns category hint only for valid invites
+        
+        **Security (Bloco A Slice 1 - 7 LOCKED REQUIREMENTS):**
+        1. Token hashed for lookup (SHA-256)
+        2. Generic states only: valid | expired | used | invalid
+        3. No PII exposure (no professional name/email)
+        4. No distinction between "not found" and "invalid"
+        5. Returns category hint only for valid invites
+        
+        **Use cases:**
+        - Frontend validates invite before showing registration form
+        - Returns minimal context (category) for valid invites
+        
+        **Rate limits:**
+        - 20 requests/min per IP (public endpoint)
+      operationId: validateInvite
+      tags:
+        - Invites
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateInviteRequest'
+      responses:
+        '200':
+          description: Validation result (always 200, even for invalid tokens)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateInviteResponse'
+              examples:
+                valid:
+                  summary: Valid invite
+                  value:
+                    valid: true
+                    state: valid
+                    category: FISIOTERAPIA
+                expired:
+                  summary: Expired invite
+                  value:
+                    valid: false
+                    state: expired
+                used:
+                  summary: Already used
+                  value:
+                    valid: false
+                    state: used
+                invalid:
+                  summary: Invalid token
+                  value:
+                    valid: false
+                    state: invalid
+        '429':
+          description: Rate limit exceeded
           content:
             application/json:
               schema:
@@ -1123,7 +1555,8 @@ components:
         
         **Exempt routes (no 403):**
         - /health
-        - /api/v1/auth/* (all auth routes)
+        - /api/v1/auth/* (all auth routes including registration)
+        - /api/v1/invites/validate (public POST endpoint, token in body)
         - /api/v1/legal/accept
         - /api/v1/legal/missing
         - /api/v1/referrals/validate (public)
@@ -1133,7 +1566,9 @@ tags:
   - name: Infrastructure
     description: Endpoints de infraestrutura (health, info)
   - name: Auth
-    description: Autenticação (login, forgot-password, reset-password)
+    description: Autenticação (login, forgot-password, reset-password, registration)
+  - name: Invites
+    description: Bloco A Slice 1 - Student invite system (create, validate)
   - name: Legal
     description: Legal V2 acceptance tracking (privacy, terms, payments notices)
   - name: Referrals

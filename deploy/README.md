@@ -12,7 +12,8 @@ deploy/
 ├── sql/                        # Scripts SQL para configuração de produção
 │   ├── 01_api_app_role_legal_acceptances.sql
 │   ├── 02_api_app_role_referral_tables.sql
-│   └── 03_api_app_role_auth_tables.sql
+│   ├── 03_api_app_role_auth_tables.sql
+│   └── 04_api_app_role_bloco_a_tables.sql
 └── README.md                   # Este arquivo
 ```
 
@@ -237,6 +238,7 @@ WHERE "referrerUserId" = "referredUserId";
 
 ---
 
+<<<<<<< HEAD
 ### `sql/03_api_app_role_auth_tables.sql`
 
 **Propósito:**  
@@ -269,6 +271,49 @@ Configura acesso de **privilégio mínimo** para a role `api_app_role` nas tabel
 2. **Após** `01_api_app_role_legal_acceptances.sql` ter sido aplicado
 3. **Após** `02_api_app_role_referral_tables.sql` ter sido aplicado
 4. **Antes** de a API começar a usar credenciais com role `api_app_role`
+=======
+### `sql/04_api_app_role_bloco_a_tables.sql`
+
+**Propósito:**  
+Configura acesso de **privilégio mínimo** para a role `api_app_role` nas tabelas do Bloco A (Professional Profile + Invite Token + Enrollment) e adiciona grant INSERT em `users` para fluxos de cadastro.
+
+**Grants:**
+
+**`users` (novo: INSERT):**
+- ✅ `SELECT` — Já concedido em scripts anteriores
+- ✅ `INSERT` — **NOVO** para cadastro PROFESSIONAL + STUDENT (Bloco A)
+- ✅ `UPDATE` — Já concedido em scripts anteriores
+- ❌ **NO** `DELETE` — Remoção de usuários reservada para DBA/compliance
+- **Nota:** Scripts anteriores (#01, #02) não concediam INSERT em users; este script supersede e adiciona INSERT para workflows de registro do Bloco A
+
+**`professional_profiles`:**
+- ✅ `SELECT` — API pode ler perfis para validação de enrollment
+- ✅ `INSERT` — API pode criar perfis profissionais durante cadastro
+- ✅ `UPDATE` — API pode atualizar metadados do perfil (ex: mudança de categoria)
+- ❌ **NO** `DELETE` — Remoção de perfil reservada para DBA/compliance
+
+**`invite_tokens`:**
+- ✅ `SELECT` — API pode validar tokens durante cadastro de aluno
+- ✅ `INSERT` — API pode criar novos tokens de convite
+- ✅ `UPDATE` — API pode marcar tokens como usados (campo `usedAt`)
+- ❌ **NO** `DELETE` — Purge de tokens (expirados/usados) reservada para role elevada (batch job D8)
+
+**`enrollments`:**
+- ✅ `SELECT` — API pode ler status de enrollment para autorização
+- ✅ `INSERT` — API pode criar novos enrollments via resgate de convite
+- ✅ `UPDATE` — API pode atualizar status (ACTIVE → REVOKED) e `endedAt`
+- ❌ **NO** `DELETE` — Registros de enrollment são permanentes; remoção reservada para DBA
+
+**Quando aplicar:**
+
+1. **Após** a migration do Bloco A Slice 1 ter sido aplicada:  
+   ```
+   apps/api/prisma/migrations/20260914030500_add_bloco_a_slice_1_schema/migration.sql
+   ```
+   (Confirme que as tabelas `professional_profiles`, `invite_tokens`, `enrollments` existem)
+
+2. **Antes** de a API começar a usar credenciais com role `api_app_role`
+>>>>>>> 888fcb8 (feat(db): add Bloco A Slice 1 schema (ProfessionalProfile + InviteToken + Enrollment))
 
 **Como aplicar:**
 
@@ -279,7 +324,11 @@ Configura acesso de **privilégio mínimo** para a role `api_app_role` nas tabel
 psql postgresql://origo:origo_dev_password@localhost:5435/origo_dev
 
 # 2. Rodar o script
+<<<<<<< HEAD
 \i deploy/sql/03_api_app_role_auth_tables.sql
+=======
+\i deploy/sql/04_api_app_role_bloco_a_tables.sql
+>>>>>>> 888fcb8 (feat(db): add Bloco A Slice 1 schema (ProfessionalProfile + InviteToken + Enrollment))
 
 # 3. Configurar senha da role (se necessário para testes locais)
 ALTER ROLE api_app_role PASSWORD 'senha_local_dev';
@@ -299,30 +348,47 @@ DATABASE_URL="postgresql://api_app_role:senha_local_dev@localhost:5435/origo_dev
 psql <PRODUCTION_DATABASE_URL>
 
 # 2. Rodar o script
+<<<<<<< HEAD
 \i deploy/sql/03_api_app_role_auth_tables.sql
+=======
+\i deploy/sql/04_api_app_role_bloco_a_tables.sql
+>>>>>>> 888fcb8 (feat(db): add Bloco A Slice 1 schema (ProfessionalProfile + InviteToken + Enrollment))
 
 # 3. Configurar senha segura para api_app_role (se ainda não configurada)
 ALTER ROLE api_app_role PASSWORD '<senha-forte-via-secrets-manager>';
 ```
 
 **Idempotência:**  
+<<<<<<< HEAD
 O script pode ser executado múltiplas vezes sem erro. Ele usa `REVOKE ALL` antes de cada `GRANT` para garantir privilégio mínimo explícito.
+=======
+O script pode ser executado múltiplas vezes sem erro. Ele usa `REVOKE ALL` + `GRANT` explícito para garantir estado limpo.
+>>>>>>> 888fcb8 (feat(db): add Bloco A Slice 1 schema (ProfessionalProfile + InviteToken + Enrollment))
 
 **Verificação:**
 
 ```sql
+<<<<<<< HEAD
 -- Listar grants da role api_app_role nas tabelas de autenticação
+=======
+-- Listar grants da role api_app_role nas tabelas do Bloco A + users
+>>>>>>> 888fcb8 (feat(db): add Bloco A Slice 1 schema (ProfessionalProfile + InviteToken + Enrollment))
 SELECT 
   table_name,
   grantee, 
   privilege_type 
 FROM information_schema.table_privileges 
 WHERE table_schema = 'public' 
+<<<<<<< HEAD
   AND table_name IN ('users', 'password_reset_tokens', 'refresh_tokens')
+=======
+  AND table_name IN ('professional_profiles', 'invite_tokens', 'enrollments', 'users')
+>>>>>>> 888fcb8 (feat(db): add Bloco A Slice 1 schema (ProfessionalProfile + InviteToken + Enrollment))
   AND grantee = 'api_app_role'
 ORDER BY table_name, privilege_type;
 
 -- Resultado esperado:
+<<<<<<< HEAD
 -- table_name              | grantee      | privilege_type
 -- ------------------------|--------------|---------------
 -- password_reset_tokens   | api_app_role | INSERT
@@ -366,6 +432,71 @@ Para setup completo de produção, aplicar nesta ordem:
 
 **Contexto:**  
 Prod login atualmente retorna 500 porque apenas grants de legal+referral existem (scripts 01/02). Este script 03 adiciona os grants necessários para flows de autenticação (login, refresh token, password reset).
+=======
+-- table_name            | grantee      | privilege_type
+-- ----------------------|--------------|---------------
+-- enrollments           | api_app_role | INSERT
+-- enrollments           | api_app_role | SELECT
+-- enrollments           | api_app_role | UPDATE
+-- invite_tokens         | api_app_role | INSERT
+-- invite_tokens         | api_app_role | SELECT
+-- invite_tokens         | api_app_role | UPDATE
+-- professional_profiles | api_app_role | INSERT
+-- professional_profiles | api_app_role | SELECT
+-- professional_profiles | api_app_role | UPDATE
+-- users                 | api_app_role | INSERT
+-- users                 | api_app_role | SELECT
+-- users                 | api_app_role | UPDATE
+```
+
+**Integridade de Dados (Database Security Checklist):**
+
+A migration do Bloco A adiciona constraints para garantir integridade:
+
+1. **Partial Unique Index** — Previne múltiplos enrollments ACTIVE por (studentUserId, category):
+   ```sql
+   CREATE UNIQUE INDEX "enrollments_one_active_per_student_category" 
+   ON "enrollments"("studentUserId", "category") 
+   WHERE "status" = 'ACTIVE';
+   ```
+
+2. **CHECK Constraint** — Previne auto-enrollment (student = professional):
+   ```sql
+   ALTER TABLE "enrollments" 
+   ADD CONSTRAINT "enrollments_no_self_enrollment_check" 
+   CHECK ("studentUserId" <> "professionalUserId");
+   ```
+
+Queries de verificação para DBA/auditoria:
+
+```sql
+-- 1. Verificar múltiplos ACTIVE enrollments (deve retornar 0 linhas)
+SELECT "studentUserId", category, COUNT(*) 
+FROM public.enrollments 
+WHERE status = 'ACTIVE'
+GROUP BY "studentUserId", category
+HAVING COUNT(*) > 1;
+
+-- 2. Verificar auto-enrollments (deve retornar 0 linhas; constraint previne)
+SELECT id, "studentUserId", "professionalUserId", "createdAt"
+FROM public.enrollments
+WHERE "studentUserId" = "professionalUserId";
+```
+
+**Contexto Bloco A (Slice 1):**  
+- Sistema de cadastro profissional + convite via token + enrollment aluno
+- Invite tokens são **hash-only** (SHA-256), single-use, purge D8-style
+- Enrollments rastreiam relacionamento de cuidado (sem dados clínicos)
+- Product locks: Pro cadastro não gera trial; Student apenas via link de convite
+- Migration: `20260914030500_add_bloco_a_slice_1_schema`
+
+**Database Security Notes:**
+- **Invite tokens:** SHA-256 hash only (never plaintext), purpose = enrollment invite
+- **Enrollments:** PII-linked userIds, purpose = care relationship tracking
+- **No clinical dump:** Nenhuma tabela do Bloco A Slice 1 armazena dados clínicos (HEP, sessões, notas clínicas)
+- **Least privilege:** Nenhum DELETE grant; purge via role elevada ou compliance
+- **Partial unique:** Garante 1 ACTIVE enrollment por (student, category)
+>>>>>>> 888fcb8 (feat(db): add Bloco A Slice 1 schema (ProfessionalProfile + InviteToken + Enrollment))
 
 ---
 

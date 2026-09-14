@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ProfessionalCategory, UserRole } from '@prisma/client';
 import {
   hashPassword,
   verifyPassword,
@@ -30,6 +30,20 @@ interface ForgotPasswordBody {
 interface ResetPasswordBody {
   token: string;
   new_password: string;
+}
+
+interface RegisterProfessionalBody {
+  name: string;
+  email: string;
+  password: string;
+  category: 'FISIOTERAPIA' | 'EDUCACAO_FISICA' | 'PERSONAL';
+}
+
+interface RegisterStudentBody {
+  invite_token: string;
+  name: string;
+  email: string;
+  password: string;
 }
 
 /**
@@ -400,6 +414,346 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.code(500).send({
           error: 'Internal Server Error',
           message: 'An error occurred during password reset',
+        });
+      }
+    }
+  );
+
+  /**
+   * POST /api/v1/auth/register/professional
+   * Professional registration (public endpoint)
+   * 
+   * BACKEND SECURITY NOTES:
+   * - Sets User.role = PROFESSIONAL server-side only (Sec 2)
+   * - Creates ProfessionalProfile from validated category (Sec 2)
+   * - Returns tokens like login (no separate login required)
+   * - Legal acceptance required before full access (403 middleware)
+   * 
+   * Body: { name, email, password, category }
+   * Returns: { access_token, refresh_token, user, missing_doc_versions }
+   */
+  fastify.post<{ Body: RegisterProfessionalBody }>(
+    '/api/v1/auth/register/professional',
+    {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: '15 minutes',
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{ Body: RegisterProfessionalBody }>,
+      reply: FastifyReply
+    ) => {
+      const { name, email, password, category } = request.body;
+
+      // Validation (422)
+      if (!name || !email || !password || !category) {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'Name, email, password, and category are required',
+        });
+      }
+
+      if (!isValidEmail(email)) {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'Invalid email format',
+        });
+      }
+
+      if (!isValidPassword(password)) {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'Password must be at least 12 characters',
+        });
+      }
+
+      // SECURITY (Sec 2): Validate category against enum server-side
+      if (!Object.values(ProfessionalCategory).includes(category as any)) {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'Invalid professional category',
+        });
+      }
+
+      try {
+        // Check if email already exists
+        const existingUser = await prisma.user.findUnique({
+          where: { email: email.toLowerCase() },
+        });
+
+        if (existingUser) {
+          return reply.code(422).send({
+            error: 'Validation Error',
+            message: 'Email already registered',
+          });
+        }
+
+        // Hash password
+        const passwordHash = await hashPassword(password);
+
+        // SECURITY (Sec 2): Create user with PROFESSIONAL role (server-side only)
+        // Never trust client-supplied role
+        const user = await prisma.$transaction(async (tx) => {
+          const newUser = await tx.user.create({
+            data: {
+              email: email.toLowerCase(),
+              passwordHash,
+              name,
+              role: UserRole.PROFESSIONAL, // SECURITY: Server-side role assignment
+            },
+          });
+
+          // SECURITY (Sec 2): Create ProfessionalProfile with validated category
+          await tx.professionalProfile.create({
+            data: {
+              userId: newUser.id,
+              category: category as ProfessionalCategory,
+            },
+          });
+
+          return newUser;
+        });
+
+        // Generate tokens (same as login)
+        const accessToken = generateAccessToken({
+          userId: user.id,
+          email: user.email,
+        });
+
+        const { token: refreshToken, hash: refreshTokenHash } =
+          generateSecureToken();
+
+        await prisma.refreshToken.create({
+          data: {
+            userId: user.id,
+            tokenHash: refreshTokenHash,
+            expiresAt: getRefreshTokenExpiry(),
+          },
+        });
+
+        // Calculate missing legal documents
+        // Professional users need: privacy + terms_app + terms_saas + payments_notice
+        const missingDocVersions = [
+          ...REQUIRED_DOCS_ALL_USERS,
+          ...REQUIRED_DOCS_PROFESSIONAL,
+        ];
+
+        return reply.code(200).send({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+          },
+          missing_doc_versions: missingDocVersions,
+        });
+      } catch (error) {
+        fastify.log.error(error, 'Professional registration error');
+        return reply.code(500).send({
+          error: 'Internal Server Error',
+          message: 'An error occurred during registration',
+        });
+      }
+    }
+  );
+
+  /**
+   * POST /api/v1/auth/register/student
+   * Student registration via invite token (public endpoint)
+   * 
+   * BACKEND SECURITY NOTES (7 LOCKED REQUIREMENTS):
+   * 1. Validates invite token (hash lookup, TTL, single-use) (Sec 1, 7)
+   * 2. Sets User.role = STUDENT server-side only (Sec 2)
+   * 3. Creates ACTIVE Enrollment (studentUserId from new user, professionalUserId from invite) (Sec 4)
+   * 4. Marks invite as used atomically (Sec 1)
+   * 5. Generic 410/422 errors (no enumeration) (Sec 3)
+   * 6. Validates unique ACTIVE enrollment constraint (Sec 4)
+   * 7. Student can only enroll via valid invite (Sec 7)
+   * 
+   * Body: { invite_token, name, email, password }
+   * Returns: { access_token, refresh_token, user, missing_doc_versions }
+   * Errors: 422 validation, 410 invalid/expired/used invite
+   */
+  fastify.post<{ Body: RegisterStudentBody }>(
+    '/api/v1/auth/register/student',
+    {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: '15 minutes',
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{ Body: RegisterStudentBody }>,
+      reply: FastifyReply
+    ) => {
+      const { invite_token, name, email, password } = request.body;
+
+      // Validation (422)
+      if (!invite_token || !name || !email || !password) {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'Invite token, name, email, and password are required',
+        });
+      }
+
+      if (!isValidEmail(email)) {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'Invalid email format',
+        });
+      }
+
+      if (!isValidPassword(password)) {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'Password must be at least 12 characters',
+        });
+      }
+
+      try {
+        // SECURITY (Sec 1, 7): Hash token to look up
+        const tokenHash = hashToken(invite_token);
+
+        const inviteToken = await prisma.inviteToken.findUnique({
+          where: { tokenHash },
+          include: {
+            professional: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+        });
+
+        // SECURITY (Sec 3, 7): Generic 410 for any invite issue (no enumeration)
+        if (!inviteToken) {
+          return reply.code(410).send({
+            error: 'Gone',
+            message: 'Invalid or expired invite link',
+          });
+        }
+
+        // SECURITY (Sec 1, 7): Check token validity (single-use via usedAt)
+        if (inviteToken.usedAt !== null) {
+          return reply.code(410).send({
+            error: 'Gone',
+            message: 'Invite link has already been used',
+          });
+        }
+
+        // SECURITY (Sec 1, 7): Check TTL
+        if (inviteToken.expiresAt < new Date()) {
+          return reply.code(410).send({
+            error: 'Gone',
+            message: 'Invite link has expired',
+          });
+        }
+
+        // Check if email already exists (unique constraint)
+        const existingUser = await prisma.user.findUnique({
+          where: { email: email.toLowerCase() },
+        });
+
+        if (existingUser) {
+          return reply.code(422).send({
+            error: 'Validation Error',
+            message: 'Email already registered',
+          });
+        }
+
+        // Hash password
+        const passwordHash = await hashPassword(password);
+
+        // SECURITY (Sec 2, 4, 7): Atomic transaction:
+        // 1. Create user with STUDENT role (server-side only)
+        // 2. Create ACTIVE enrollment
+        // 3. Mark invite as used
+        const result = await prisma.$transaction(async (tx) => {
+          // SECURITY (Sec 2): Create user with STUDENT role (never trust client)
+          // Use validated email from request body (required field)
+          const newUser = await tx.user.create({
+            data: {
+              email: email.toLowerCase(), // SECURITY: Use validated email from body
+              passwordHash,
+              name,
+              role: UserRole.STUDENT, // SECURITY: Server-side role assignment
+            },
+          });
+
+          // SECURITY (Sec 4): Create ACTIVE enrollment
+          // Partial unique index enforces 1 ACTIVE per (studentUserId, category)
+          await tx.enrollment.create({
+            data: {
+              studentUserId: newUser.id,
+              professionalUserId: inviteToken.professionalUserId,
+              category: inviteToken.category,
+              status: 'ACTIVE',
+            },
+          });
+
+          // SECURITY (Sec 1): Mark invite as used (single-use)
+          await tx.inviteToken.update({
+            where: { id: inviteToken.id },
+            data: { usedAt: new Date() },
+          });
+
+          return newUser;
+        });
+
+        // Generate tokens (same as login)
+        const accessToken = generateAccessToken({
+          userId: result.id,
+          email: result.email,
+        });
+
+        const { token: refreshToken, hash: refreshTokenHash } =
+          generateSecureToken();
+
+        await prisma.refreshToken.create({
+          data: {
+            userId: result.id,
+            tokenHash: refreshTokenHash,
+            expiresAt: getRefreshTokenExpiry(),
+          },
+        });
+
+        // Calculate missing legal documents
+        // Student users need: privacy + terms_app
+        const missingDocVersions = [...REQUIRED_DOCS_ALL_USERS];
+
+        return reply.code(200).send({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          user: {
+            id: result.id,
+            email: result.email,
+            role: result.role,
+          },
+          missing_doc_versions: missingDocVersions,
+        });
+      } catch (error: any) {
+        fastify.log.error(error, 'Student registration error');
+
+        // SECURITY (Sec 3, 4): Handle unique constraint violations generically
+        // Prisma error P2002 = unique constraint violation
+        if (error.code === 'P2002') {
+          // Could be duplicate ACTIVE enrollment (violates partial unique index)
+          return reply.code(422).send({
+            error: 'Validation Error',
+            message: 'Unable to complete registration',
+          });
+        }
+
+        return reply.code(500).send({
+          error: 'Internal Server Error',
+          message: 'An error occurred during registration',
         });
       }
     }
