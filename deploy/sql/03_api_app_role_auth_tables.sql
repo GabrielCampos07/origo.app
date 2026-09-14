@@ -39,9 +39,9 @@
 --     - NO DELETE: D8 purge requires elevated role (future origo_cron role)
 --
 -- FUTURE WORK:
---   - DELETE on token tables: Current design has D8 purge run as api_app_role.
---     Alternative: create dedicated origo_cron role with DELETE-only on tokens,
---     run purge jobs as origo_cron instead of api_app_role.
+--   - DELETE on token tables: D8 purge requires elevated role (e.g. origo_cron)
+--     with DELETE-only on tokens; keep api_app_role without DELETE. To implement,
+--     create dedicated origo_cron role and run purge jobs as origo_cron.
 --   - INSERT on users: When signup resumes, either grant INSERT to api_app_role
 --     or create separate signup_role with INSERT-only on users.
 --
