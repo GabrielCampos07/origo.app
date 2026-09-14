@@ -186,7 +186,7 @@ export default function ReferralDashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                 <div className="bg-white/70 backdrop-blur-sm rounded-lg border border-[var(--brand-primary)]/20 p-3">
                   <p className="text-[var(--color-ink-600)] text-xs mb-1">Para o indicado</p>
-                  <p className="font-semibold text-[var(--color-ink-900)]">1 mês grátis</p>
+                  <p className="font-semibold text-[var(--color-ink-900)]">14 dias grátis</p>
                 </div>
                 <div className="bg-white/70 backdrop-blur-sm rounded-lg border border-[var(--brand-primary)]/20 p-3">
                   <p className="text-[var(--color-ink-600)] text-xs mb-1">Para você</p>
@@ -344,7 +344,7 @@ export default function ReferralDashboardPage() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[var(--brand-primary)] mt-0.5">•</span>
-              <span>Quando eles assinarem usando seu código, ganham 1 mês grátis</span>
+              <span>Quando eles assinarem usando seu código, ganham 14 dias grátis</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[var(--brand-primary)] mt-0.5">•</span>

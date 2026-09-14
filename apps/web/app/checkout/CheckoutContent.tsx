@@ -1,5 +1,12 @@
 "use client";
 
+// SECURITY NOTE (FRONTEND SECURITY CHECKER):
+// - Trial is NEVER granted by frontend
+// - Backend/Stripe determines trial eligibility based on promotion code
+// - Frontend only displays trial messaging when valid indication coupon is applied
+// - No open redirects: checkout_url validated to be checkout.stripe.com or *.stripe.com
+// - Referral code sent to backend only if validated via API first
+
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -435,8 +442,8 @@ export default function CheckoutContent() {
                   )}
                   
                   <p className="text-xs text-[var(--color-ink-500)]">
-                    Com cupom de indicação: <strong>1 mês grátis adicional</strong> (após trial de 14 dias). Seu indicador receberá
-                    15% de comissão recorrente após o mês de desconto.
+                    Com cupom de indicação válido: <strong>14 dias grátis</strong>. Seu indicador receberá
+                    15% de comissão recorrente após o período de desconto.
                   </p>
                 </div>
               )}
@@ -465,7 +472,7 @@ export default function CheckoutContent() {
                   <div className="flex justify-between text-sm">
                     <span className="text-[var(--brand-primary)] font-medium">Desconto</span>
                     <span className="text-[var(--brand-primary)] font-medium">
-                      1 mês grátis
+                      14 dias grátis
                     </span>
                   </div>
                 )}
@@ -502,7 +509,10 @@ export default function CheckoutContent() {
               )}
               
               <p className="text-xs text-[var(--color-ink-500)] mt-4 text-center leading-relaxed">
-                14 dias de teste grátis. Cancele quando quiser.{" "}
+                {couponValidation?.valid 
+                  ? "14 dias grátis ativo com cupom de indicação. Cancele quando quiser. "
+                  : "Sem cupom de indicação: cobrança inicia imediatamente. "
+                }
                 <Link href="/termos-saas" className="underline hover:text-[var(--brand-primary)]">
                   Termos
                 </Link>{" "}

@@ -46,7 +46,7 @@ export type Payout = {
 
 export type CouponValidation = {
   valid: boolean;
-  discount_description?: string; // e.g. "1 mês grátis"
+  discount_description?: string; // e.g. "14 dias grátis"
   referrer_email_prefix?: string;
 };
 

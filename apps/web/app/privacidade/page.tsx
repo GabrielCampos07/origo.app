@@ -235,7 +235,7 @@ export default function PrivacidadePage() {
           <ul className="list-disc list-inside space-y-2 text-base text-[var(--color-ink-700)]">
             <li><strong>Dados do indicador:</strong> E-mail, nome, código de cupom gerado, histórico de indicações</li>
             <li><strong>Dados do indicado:</strong> E-mail, nome, cupom usado, vínculo ao indicador, status da assinatura</li>
-            <li><strong>Finalidade:</strong> Executar o programa de indicação (1 mês grátis + comissão de 15% recorrente)</li>
+            <li><strong>Finalidade:</strong> Executar o programa de indicação (14 dias grátis + comissão de 15% recorrente)</li>
             <li><strong>Base legal:</strong> Art. 7º V (execução de contrato) e/ou I (consentimento)</li>
           </ul>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed mt-4 mb-3">

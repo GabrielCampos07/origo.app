@@ -114,7 +114,7 @@ export default function ProfessionalSignupPage() {
         <div className="mb-6 text-center">
           <h1 className="mb-2 text-3xl font-bold text-slate-900">Criar conta profissional</h1>
           <p className="text-slate-600">
-            Crie sua conta de terapeuta. Plano pro iniciando em 14 dias após aceitar os termos.
+            Crie sua conta de terapeuta. Planos pagos disponíveis após aceitar os termos (14 dias grátis apenas com cupom de indicação).
           </p>
         </div>
 

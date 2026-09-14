@@ -60,7 +60,7 @@ export default function TermosPage() {
         <section>
           <h2 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-4">3. Planos e pagamento (PROFESSIONAL)</h2>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed mb-3">
-            O beOrigo oferece planos públicos: <strong>Start (R$ 49/mês)</strong>, <strong>Pro (R$ 79/mês)</strong> e <strong>Clinic (R$ 149/mês)</strong>, com desconto de −20% na assinatura anual. Trial de 14 dias disponível.
+            O beOrigo oferece planos públicos: <strong>Start (R$ 49/mês)</strong>, <strong>Pro (R$ 79/mês)</strong> e <strong>Clinic (R$ 149/mês)</strong>, com desconto de −20% na assinatura anual. Trial de 14 dias disponível <strong>apenas com cupom de indicação</strong>.
           </p>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed">
             Pagamentos processados via <strong>Stripe</strong>. Para detalhes contratuais SaaS, consulte <a href="/termos-saas" className="text-[var(--brand-primary)] underline hover:no-underline">Termos SaaS</a> e <a href="/aviso-pagamentos" className="text-[var(--brand-primary)] underline hover:no-underline">Aviso de Pagamentos</a>.
