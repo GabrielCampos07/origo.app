@@ -275,7 +275,7 @@ async function start() {
         // JWT verification failed or other error - let it pass through
         // Route handler will properly handle auth errors (returns 401)
         // SECURITY: Invalid JWT stays 401 (not 403)
-        fastify.log.warn(error, 'Legal acceptance middleware: JWT verification failed');
+        server.log.warn(error, 'Legal acceptance middleware: JWT verification failed');
         return;
       }
     });
