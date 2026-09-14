@@ -39,7 +39,7 @@ function extractUserId(request: FastifyRequest): string | null {
   }
   
   if (!authHeader.startsWith('Bearer ')) {
-    console.warn('[REFERRAL AUTH] Authorization header does not start with "Bearer ":', authHeader.substring(0, 20));
+    console.warn('[REFERRAL AUTH] Authorization header does not start with "Bearer "');
     return null;
   }
 
