@@ -104,6 +104,7 @@ async function parseErrorMessage(res: Response): Promise<{
 function mapStatusToKind(status: number, errorKind?: ApiErrorKind): ApiErrorKind {
   if (errorKind) return errorKind;
   if (status === 401) return "unauthorized";
+  if (status === 409) return "validation";
   if (status === 422) return "validation";
   if (status === 429) return "rate_limit";
   if (status === 410) return "gone";
@@ -194,6 +195,44 @@ export async function apiPostAuth<T>(
   try {
     const res = await fetch(url, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as T;
+      return { ok: true, data };
+    }
+
+    const errorData = await parseErrorMessage(res);
+    return {
+      ok: false,
+      kind: mapStatusToKind(res.status, errorData.kind),
+      message: errorData.message,
+      status: res.status,
+      missing_doc_versions: errorData.missing_doc_versions,
+    };
+  } catch {
+    return {
+      ok: false,
+      kind: "network",
+      message: "Não foi possível conectar ao servidor. Verifique sua conexão.",
+    };
+  }
+}
+
+export async function apiPut<T>(
+  path: string,
+  body: Record<string, unknown>
+): Promise<ApiResult<T>> {
+  const url = `${getApiBase()}${path}`;
+  try {
+    const res = await fetch(url, {
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",

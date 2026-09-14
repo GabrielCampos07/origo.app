@@ -70,6 +70,9 @@ model User {
   inviteTokensCreated       InviteToken[]
   enrollmentsAsStudent      Enrollment[]           @relation("EnrollmentStudent")
   enrollmentsAsProfessional Enrollment[]           @relation("EnrollmentProfessional")
+  workoutSessions           WorkoutSession[]
+  clinicalNotesAsStudent    ClinicalNote[]         @relation("ClinicalNoteStudent")
+  clinicalNotesAsProfessional ClinicalNote[]       @relation("ClinicalNoteProfessional")
 
   @@map("users")
 }
@@ -266,9 +269,139 @@ model Enrollment {
   updatedAt            DateTime              @updatedAt
   student              User                  @relation("EnrollmentStudent", fields: [studentUserId], references: [id], onDelete: Cascade)
   professional         User                  @relation("EnrollmentProfessional", fields: [professionalUserId], references: [id], onDelete: Cascade)
+  programs             Program[]
 
   @@index([studentUserId])
   @@index([professionalUserId])
   @@index([category])
   @@map("enrollments")
+}
+
+// Slice 2–3 HEP: program status (v1 is ACTIVE-only)
+enum ProgramStatus {
+  ACTIVE
+}
+
+// Slice 2–3 HEP: workout session lifecycle
+enum WorkoutSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+// Slice 2–3 HEP: Home Exercise Program bound to an ACTIVE Enrollment
+// DATABASE SECURITY NOTES:
+// - PURPOSE: Clinical HEP prescription (title/phase/weekly target)
+// - PII: enrollmentId links to student + professional users
+// - DATA INTEGRITY: Partial unique index enforces ONE ACTIVE program per enrollment
+// - LEAST PRIVILEGE: api_app_role has SELECT+INSERT+UPDATE (no DELETE)
+model Program {
+  id                    String        @id @default(cuid())
+  enrollmentId          String
+  title                 String
+  phaseLabel            String?
+  status                ProgramStatus @default(ACTIVE)
+  targetSessionsPerWeek Int
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  enrollment            Enrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  exercises             ProgramExercise[]
+  sessions              WorkoutSession[]
+
+  @@index([enrollmentId])
+  @@map("programs")
+}
+
+// Slice 2–3 HEP: free-text exercise lines (NO catalog / ex_* IDs)
+// DATABASE SECURITY NOTES:
+// - PURPOSE: Prescribed exercise text on a program
+// - SOFT-DELETE: removedAt hides a line without DELETE privilege; lines with
+//   SessionExerciseLog MUST NOT be removed (enforced in API)
+// - DATA INTEGRITY: Partial unique (programId, orderIndex) WHERE removedAt IS NULL
+// - LEAST PRIVILEGE: api_app_role has SELECT+INSERT+UPDATE (no DELETE)
+model ProgramExercise {
+  id          String    @id @default(cuid())
+  programId   String
+  orderIndex  Int
+  name        String
+  sets        Int
+  reps        String
+  notes       String?
+  precautions String?
+  removedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  program     Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  sessionLogs SessionExerciseLog[]
+
+  @@index([programId])
+  @@map("program_exercises")
+}
+
+// Slice 2–3 HEP: student workout session + optional VAS painLevel 0–10
+// DATABASE SECURITY NOTES:
+// - PURPOSE: Execution log + VAS (dado de saúde)
+// - PII/HEALTH: studentId + painLevel
+// - DATA INTEGRITY: Partial unique one IN_PROGRESS per (studentId, programId)
+// - CHECK: painLevel IS NULL OR (0..10)
+// - LEAST PRIVILEGE: api_app_role has SELECT+INSERT+UPDATE (no DELETE)
+model WorkoutSession {
+  id           String               @id @default(cuid())
+  programId    String
+  studentId    String
+  status       WorkoutSessionStatus @default(IN_PROGRESS)
+  startedAt    DateTime             @default(now())
+  completedAt  DateTime?
+  painLevel    Int?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  program      Program              @relation(fields: [programId], references: [id], onDelete: Cascade)
+  student      User                 @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exerciseLogs SessionExerciseLog[]
+
+  @@index([programId])
+  @@index([studentId])
+  @@index([studentId, status])
+  @@map("workout_sessions")
+}
+
+// Slice 2–3 HEP: per-exercise completion inside a session
+// DATABASE SECURITY NOTES:
+// - PURPOSE: Track which prescribed lines were executed
+// - Presence of a row BLOCKS ProgramExercise hard/soft removal
+// - LEAST PRIVILEGE: api_app_role has SELECT+INSERT+UPDATE (no DELETE)
+model SessionExerciseLog {
+  id                String          @id @default(cuid())
+  sessionId         String
+  programExerciseId String
+  setsCompleted     Int
+  completedAt       DateTime        @default(now())
+  session           WorkoutSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  programExercise   ProgramExercise @relation(fields: [programExerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, programExerciseId])
+  @@index([sessionId])
+  @@index([programExerciseId])
+  @@map("session_exercise_logs")
+}
+
+// Slice 3C: minimal clinical chart note (prontuário)
+// DATABASE SECURITY NOTES:
+// - PURPOSE: Conduta / evolução / infos pertinentes (dado de saúde)
+// - PII/HEALTH: studentId + professionalId + free-text clinical fields
+// - APPEND-ONLY: no UPDATE/DELETE for api_app_role (INSERT+SELECT only)
+// - ACCESS: PROFESSIONAL only via own ACTIVE enrollment (enforced in API)
+model ClinicalNote {
+  id                     String   @id @default(cuid())
+  studentId              String
+  professionalId         String
+  conduta                String
+  evolucao               String
+  informacoesPertinentes String
+  createdAt              DateTime @default(now())
+  student                User     @relation("ClinicalNoteStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  professional           User     @relation("ClinicalNoteProfessional", fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, createdAt])
+  @@index([professionalId])
+  @@map("clinical_notes")
 }
