@@ -1143,9 +1143,16 @@ paths:
         - Stripe Customer metadata origo_user_id set for webhook processing
         - success/cancel URLs constructed server-side from FRONTEND_URL env
         
+        **P0 TRIAL SECURITY LOCK:**
+        - 14-day trial (trial_period_days: 14) ONLY via valid referral/indication code
+        - Regular paid signup has NO trial_period_days (fail-closed)
+        - Server-side validation prevents client from forcing trial
+        - Invalid/missing referral = no trial, no discount
+        
         **Business Rules:**
-        - 14 day trial included in subscription
-        - referral_code applies 100% off first month via Stripe coupon
+        - 14-day trial ONLY via valid referral/indication code (P0 SECURITY LOCK)
+        - Regular paid signup has NO trial_period_days (fail-closed)
+        - referral_code applies 100% off first month via Stripe coupon + 14-day trial
         - Referral attribution recorded in DB before checkout session created
         - Available plans: start, pro, clinic
         - Billing cycles: monthly, annual

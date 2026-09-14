@@ -35,6 +35,12 @@ function getStripe(): Stripe {
  * - Applies 100% off first month via Stripe coupon
  * - Sets freeMonthEndsAt timestamp for commission logic
  * - Links Stripe customer to Origo user via metadata
+ * 
+ * P0 TRIAL SECURITY LOCK:
+ * - 14-day trial (trial_period_days: 14) ONLY via valid referral code
+ * - Regular paid signup has NO trial_period_days (fail-closed)
+ * - Server-side validation prevents client from forcing trial
+ * - Invalid/missing referral = no trial, no discount
  */
 
 export interface CreateCheckoutSessionOptions {
@@ -99,6 +105,11 @@ async function getOrCreateReferralCoupon(): Promise<string> {
  * - Applies Stripe coupon only if referral code is valid
  * - Sets customer metadata for webhook processing
  * - Prevents self-referral (user can't use their own code)
+ * 
+ * P0 TRIAL LOCK:
+ * - Sets trial_period_days: 14 ONLY when valid referral code is applied
+ * - Regular checkout has NO trial (fail-closed security)
+ * - Client cannot force trial without valid server-side referral validation
  * 
  * @param options - Checkout session options
  * @returns Checkout session result
@@ -214,6 +225,10 @@ export async function createCheckoutSession(
       metadata: {
         origo_user_id: userId,
       },
+      // P0 SECURITY LOCK: 14-day trial ONLY via valid referral code
+      // Regular paid signup has NO trial_period_days
+      // Fail-closed: invalid/missing referral = no trial
+      ...(referralApplied && { trial_period_days: 14 }),
     },
   };
 
