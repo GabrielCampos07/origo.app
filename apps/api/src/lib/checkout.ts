@@ -3,19 +3,28 @@ import { PrismaClient, ReferralStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Stripe client initialization
+// BACKEND SECURITY: Stripe lazy-init (no fail-fast at module load in production)
+// Allows /health to boot successfully without Stripe secrets
+// Stripe required for paid flows; checkout returns 503 if not configured
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_REFERRAL_COUPON_ID = process.env.STRIPE_REFERRAL_COUPON_ID || 'create-on-fly';
 
-if (!STRIPE_SECRET_KEY) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('FATAL: STRIPE_SECRET_KEY environment variable is required in production.');
-  }
-}
+// Lazy-initialized Stripe client (null until first use)
+let stripe: Stripe | null = null;
 
-const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2026-08-26.dahlia',
-}) : null;
+function getStripe(): Stripe {
+  if (!STRIPE_SECRET_KEY) {
+    throw new Error('Stripe not initialized (missing STRIPE_SECRET_KEY)');
+  }
+  
+  if (!stripe) {
+    stripe = new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: '2026-08-26.dahlia',
+    });
+  }
+  
+  return stripe;
+}
 
 /**
  * Checkout Helper - Referral Integration
@@ -50,9 +59,7 @@ export interface CreateCheckoutSessionResult {
  * @returns Stripe coupon ID
  */
 async function getOrCreateReferralCoupon(): Promise<string> {
-  if (!stripe) {
-    throw new Error('Stripe not initialized');
-  }
+  const stripe = getStripe();
 
   // If STRIPE_REFERRAL_COUPON_ID is not "create-on-fly", use it directly
   if (STRIPE_REFERRAL_COUPON_ID && STRIPE_REFERRAL_COUPON_ID !== 'create-on-fly') {
@@ -100,9 +107,7 @@ async function getOrCreateReferralCoupon(): Promise<string> {
 export async function createCheckoutSession(
   options: CreateCheckoutSessionOptions
 ): Promise<CreateCheckoutSessionResult> {
-  if (!stripe) {
-    throw new Error('Stripe not initialized (missing STRIPE_SECRET_KEY)');
-  }
+  const stripe = getStripe();
 
   const { userId, email, priceId, referralCode, successUrl, cancelUrl } = options;
 

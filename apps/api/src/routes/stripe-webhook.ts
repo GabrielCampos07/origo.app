@@ -4,37 +4,28 @@ import Stripe from 'stripe';
 
 const prisma = new PrismaClient();
 
-// MUST-FIX: Fail fast if Stripe credentials are missing in production
+// BACKEND SECURITY: Stripe lazy-init (no fail-fast at module load in production)
+// Allows /health to boot successfully without Stripe secrets
+// Stripe required for paid flows; checkout/webhook return 503 if not configured
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
-if (!STRIPE_SECRET_KEY) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'FATAL: STRIPE_SECRET_KEY environment variable is required in production.'
-    );
-  } else {
-    console.warn(
-      'WARNING: STRIPE_SECRET_KEY not set. Stripe webhook will not work.'
-    );
-  }
-}
+// Lazy-initialized Stripe client (null until first use)
+let stripe: Stripe | null = null;
 
-if (!STRIPE_WEBHOOK_SECRET) {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'FATAL: STRIPE_WEBHOOK_SECRET environment variable is required in production.'
-    );
-  } else {
-    console.warn(
-      'WARNING: STRIPE_WEBHOOK_SECRET not set. Stripe webhook signature verification disabled in dev.'
-    );
+function getStripe(): Stripe | null {
+  if (!STRIPE_SECRET_KEY) {
+    return null;
   }
+  
+  if (!stripe) {
+    stripe = new Stripe(STRIPE_SECRET_KEY, {
+      apiVersion: '2026-08-26.dahlia',
+    });
+  }
+  
+  return stripe;
 }
-
-const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: '2026-08-26.dahlia',
-}) : null;
 
 /**
  * Stripe Webhook Handler
@@ -88,6 +79,8 @@ export async function stripeWebhookRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/api/v1/webhooks/stripe',
     async (request: FastifyRequest, reply: FastifyReply) => {
+      const stripe = getStripe();
+      
       if (!stripe) {
         fastify.log.error('Stripe not initialized (missing STRIPE_SECRET_KEY)');
         return reply.code(503).send({
@@ -116,19 +109,28 @@ export async function stripeWebhookRoutes(fastify: FastifyInstance) {
           throw new Error('Raw body not available - content type parser may not be configured correctly');
         }
 
-        // SECURITY: Verify webhook signature (prevents spoofing)
-        // PRODUCTION: STRIPE_WEBHOOK_SECRET is required (enforced at module load)
-        if (STRIPE_WEBHOOK_SECRET) {
+        // BACKEND SECURITY: ZERO webhook signature skip in production
+        // Even if STRIPE_WEBHOOK_SECRET missing in prod, do NOT constructEvent with unverified body
+        // Reject 503/500 rather than skip signature verification
+        if (!STRIPE_WEBHOOK_SECRET) {
+          if (process.env.NODE_ENV === 'production') {
+            fastify.log.error('FATAL: STRIPE_WEBHOOK_SECRET missing in production - rejecting webhook');
+            return reply.code(503).send({
+              error: 'Service Unavailable',
+              message: 'Webhook signature verification not configured',
+            });
+          } else {
+            // DEV ONLY: Skip signature verification with warning
+            fastify.log.warn('Stripe webhook signature verification DISABLED (dev mode only)');
+            event = JSON.parse(rawBody.toString());
+          }
+        } else {
+          // PRODUCTION: Always verify signature
           event = stripe.webhooks.constructEvent(
             rawBody,
             signature,
             STRIPE_WEBHOOK_SECRET
           );
-        } else {
-          // DEV ONLY: Skip signature verification if secret not set
-          // This is acceptable in dev but would fail at startup in production
-          fastify.log.warn('Stripe webhook signature verification DISABLED (dev mode)');
-          event = JSON.parse(rawBody.toString());
         }
       } catch (error: any) {
         fastify.log.error(error, 'Stripe webhook signature verification failed');

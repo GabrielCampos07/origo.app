@@ -34,8 +34,39 @@ const server = Fastify({
 
 async function start() {
   try {
+    // BACKEND SECURITY: Fail-fast on missing required secrets in production
+    if (process.env.NODE_ENV === 'production') {
+      const requiredSecrets = {
+        JWT_SECRET: process.env.JWT_SECRET,
+        DATABASE_URL: process.env.DATABASE_URL,
+      };
+      
+      const missingSecrets = Object.entries(requiredSecrets)
+        .filter(([_, value]) => !value)
+        .map(([key]) => key);
+      
+      if (missingSecrets.length > 0) {
+        console.error(`FATAL: Required environment variables missing in production: ${missingSecrets.join(', ')}`);
+        process.exit(1);
+      }
+    }
+    
+    // BACKEND SECURITY: CORS fail-closed - only allow FRONTEND_URL origin
+    // SECURITY: Fail-fast if FRONTEND_URL is missing in production
+    const FRONTEND_URL = process.env.FRONTEND_URL;
+    if (!FRONTEND_URL) {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('FATAL: FRONTEND_URL environment variable is required in production for CORS allowlist');
+        process.exit(1);
+      }
+      console.warn('WARNING: FRONTEND_URL not set. Using default http://localhost:3456');
+    }
+    
+    const allowedOrigin = FRONTEND_URL || 'http://localhost:3456';
+    
     await server.register(cors, {
-      origin: true,
+      origin: allowedOrigin,
+      credentials: true,
     });
 
     // Global rate limiting (D4: protect against abuse)
