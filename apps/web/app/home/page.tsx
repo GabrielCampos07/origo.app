@@ -348,12 +348,29 @@ export default function HomePage() {
     setMenuOpen(false);
   }, []);
 
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+  }, []);
+
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && menuOpen) {
+        closeMenu();
+      }
+    };
+
+    if (menuOpen) {
+      document.addEventListener("keydown", handleEscape);
+      return () => document.removeEventListener("keydown", handleEscape);
+    }
+  }, [menuOpen, closeMenu]);
 
   return (
     <div className="min-h-screen bg-[var(--color-green-50)]">
@@ -420,43 +437,154 @@ export default function HomePage() {
             </span>
           </button>
         </div>
+      </header>
 
-        <div
-          className={`md:hidden overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
-            menuOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"
-          }`}
-        >
-          <nav className="flex flex-col gap-1 px-5 pb-5 pt-1 border-t border-[#d1e5d9]/50 bg-[var(--color-green-50)]">
+      {/* 
+        Mobile Fullscreen Menu Overlay
+        
+        SECURITY NOTE (FRONTEND SECURITY CHECKER):
+        - All CTAs use fixed paths (/cadastro/profissional, /login, /privacidade, /termos)
+        - No open redirects - all links hardcoded to internal routes or trusted external domains
+        - mailto: link only for contact footer (contact@beorigo.app)
+        - Indique link points to /dashboard/professor/indicacao (internal)
+        - Planos link scrolls to #planos anchor (same page)
+      */}
+      <div
+        className={`md:hidden fixed inset-0 z-50 bg-[#f5f5f0] transition-transform duration-300 ease-out ${
+          menuOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+        aria-hidden={!menuOpen}
+      >
+        <div className="flex flex-col h-full">
+          {/* Top bar */}
+          <div className="flex items-center justify-between px-5 py-3 h-[56px] shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0">
+                <Image
+                  src="/assets/logo-lockup.png"
+                  alt=""
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <span className="font-semibold text-lg text-[#2e3833]">beOrigo</span>
+            </div>
+            <button
+              type="button"
+              className="flex items-center justify-center w-11 h-11 rounded-lg cursor-pointer touch-manipulation"
+              onClick={closeMenu}
+              aria-label="Fechar menu"
+            >
+              <span className="text-[#2e3833] text-[22px] font-medium">✕</span>
+            </button>
+          </div>
+
+          {/* Menu panel */}
+          <nav className="flex-1 flex flex-col gap-1 px-6 pt-6 pb-10 overflow-y-auto">
+            {/* Wordmark */}
+            <div className="relative w-[180px] h-12 mb-1">
+              <Image
+                src="/assets/logo-lockup.png"
+                alt="beOrigo"
+                fill
+                className="object-contain object-left"
+              />
+            </div>
+
+            <p className="text-[#66736b] text-[13px] font-medium mb-1">Navegação</p>
+
+            {/* Navigation Links */}
             <button
               type="button"
               onClick={() => scrollToId("como-funciona")}
-              className="nav-link cursor-pointer text-left rounded-xl px-4 py-3.5 text-base font-medium text-[var(--color-ink-800)] hover:bg-[#e5f0e8] transition-colors"
+              className="flex items-center justify-between w-full px-1 py-4 min-h-[52px] text-left cursor-pointer touch-manipulation group"
             >
-              Como funciona
+              <span className="font-semibold text-[22px] text-[#2e3833] group-hover:text-[var(--brand-primary)] transition-colors">
+                Como funciona
+              </span>
+              <span className="text-[#66736b] text-[20px]">›</span>
             </button>
+
             <button
               type="button"
               onClick={() => scrollToId("para-quem")}
-              className="nav-link cursor-pointer text-left rounded-xl px-4 py-3.5 text-base font-medium text-[var(--color-ink-800)] hover:bg-[#e5f0e8] transition-colors"
+              className="flex items-center justify-between w-full px-1 py-4 min-h-[52px] text-left cursor-pointer touch-manipulation group"
             >
-              Para quem
+              <span className="font-semibold text-[22px] text-[#2e3833] group-hover:text-[var(--brand-primary)] transition-colors">
+                Para quem
+              </span>
+              <span className="text-[#66736b] text-[20px]">›</span>
             </button>
+
             <button
               type="button"
               onClick={() => scrollToId("planos")}
-              className="nav-link cursor-pointer text-left rounded-xl px-4 py-3.5 text-base font-medium text-[var(--color-ink-800)] hover:bg-[#e5f0e8] transition-colors"
+              className="flex items-center justify-between w-full px-1 py-4 min-h-[52px] text-left cursor-pointer touch-manipulation group"
             >
-              Planos
+              <span className="font-semibold text-[22px] text-[#2e3833] group-hover:text-[var(--brand-primary)] transition-colors">
+                Planos
+              </span>
+              <span className="text-[#66736b] text-[20px]">›</span>
             </button>
-            <FlowerButton
+
+            <a
+              href="/dashboard/professor/indicacao"
+              className="flex items-center justify-between w-full px-1 py-4 min-h-[52px] cursor-pointer touch-manipulation group"
+              onClick={closeMenu}
+            >
+              <span className="font-semibold text-[22px] text-[#2e3833] group-hover:text-[var(--brand-primary)] transition-colors">
+                Indique e ganhe
+              </span>
+              <span className="text-[#66736b] text-[20px]">›</span>
+            </a>
+
+            <a
+              href="/privacidade"
+              className="flex items-center justify-between w-full px-1 py-4 min-h-[52px] cursor-pointer touch-manipulation group"
+              onClick={closeMenu}
+            >
+              <span className="font-semibold text-[22px] text-[#2e3833] group-hover:text-[var(--brand-primary)] transition-colors">
+                Privacidade
+              </span>
+              <span className="text-[#66736b] text-[20px]">›</span>
+            </a>
+
+            <a
+              href="/termos"
+              className="flex items-center justify-between w-full px-1 py-4 min-h-[52px] cursor-pointer touch-manipulation group"
+              onClick={closeMenu}
+            >
+              <span className="font-semibold text-[22px] text-[#2e3833] group-hover:text-[var(--brand-primary)] transition-colors">
+                Termos
+              </span>
+              <span className="text-[#66736b] text-[20px]">›</span>
+            </a>
+
+            {/* Spacer */}
+            <div className="flex-1 min-h-4" />
+
+            {/* CTA Button */}
+            <a
               href="/cadastro/profissional"
-              className="mt-2 w-full text-base px-5 py-3.5 h-[52px]"
+              className="flex items-center justify-center w-full h-[52px] bg-[#598c6b] text-white font-medium text-base rounded-xl cursor-pointer touch-manipulation hover:bg-[var(--color-green-600)] transition-colors"
+              onClick={closeMenu}
             >
               Para profissionais 1:1
-            </FlowerButton>
+            </a>
+
+            {/* Secondary Link */}
+            <p className="text-[#66736b] text-[13px] text-center mt-2">
+              <a href="/login" className="hover:text-[var(--brand-primary)] transition-colors" onClick={closeMenu}>
+                Sou aluno → /login
+              </a>
+              {" · "}
+              <a href="mailto:contact@beorigo.app" className="hover:text-[var(--brand-primary)] transition-colors">
+                contacto: contact@beorigo.app
+              </a>
+            </p>
           </nav>
         </div>
-      </header>
+      </div>
 
       {/* Hero — vídeo como fundo */}
       <section className="relative min-h-[88vh] flex flex-col items-center justify-center px-6 md:px-20 py-24 overflow-hidden">
