@@ -58,17 +58,17 @@ export default function InvitePage() {
     setToken(tokenValue);
 
     async function checkInvite() {
-      // P1 SEC (FRONTEND SECURITY CHECKER): GET /api/v1/invites/:token
-      // - Token is opaque hashed single-use with TTL
+      // P1 SEC (FRONTEND SECURITY CHECKER): POST /api/v1/invites/validate with token in body
+      // - Token in JSON body (NOT URL path) to prevent access log leakage
       // - Backend returns one of 4 states: valid / expired / used / error
       // - "email_exists" is NOT exposed as distinct state (collapsed into generic error)
       // - No internal IDs leaked
-      const result = await apiGet<{
+      const result = await apiPost<{
         valid: boolean;
         state: "valid" | "expired" | "used";
         professional_name?: string;
         category?: string;
-      }>(`/api/v1/invites/${tokenValue}`);
+      }>("/api/v1/invites/validate", { token: tokenValue });
 
       if (result.ok) {
         if (result.data.state === "valid" && result.data.professional_name && result.data.category) {
@@ -150,8 +150,10 @@ export default function InvitePage() {
       setInviteState({ state: "expired" });
       return;
     }
+    // P1 SEC (FRONTEND SECURITY CHECKER): On 422 validation error, do NOT render result.message
+    // May leak "email_exists" or other enumerable info - show generic error only
     if (result.kind === "validation") {
-      setError(result.message || "Dados inválidos. Verifique e tente novamente.");
+      setError("Não foi possível criar sua conta. Verifique seus dados e tente novamente.");
       return;
     }
     if (result.kind === "network") {
@@ -170,11 +172,7 @@ export default function InvitePage() {
   }
 
   return (
-    <>
-      <head>
-        <meta name="referrer" content="no-referrer" />
-      </head>
-      <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-8">
         <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-sm">
           <div className="mb-6 text-center">
             <h1 className="text-3xl font-bold text-slate-900">beOrigo</h1>
@@ -371,6 +369,5 @@ export default function InvitePage() {
           )}
         </div>
       </div>
-    </>
   );
 }

@@ -29,8 +29,9 @@ export default function ProfessorDashboardPage() {
       return;
     }
 
-    // Role mismatch: redirect to correct dashboard
-    if (storedUser.role === "STUDENT") {
+    // P1 SEC (FRONTEND SECURITY CHECKER): Fail-closed - allowlist PROFESSIONAL only
+    // Deny all other roles explicitly
+    if (storedUser.role !== "PROFESSIONAL") {
       router.push("/dashboard/aluno");
       return;
     }
