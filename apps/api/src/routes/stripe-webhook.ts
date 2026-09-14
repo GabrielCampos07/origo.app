@@ -59,7 +59,11 @@ export async function stripeWebhookRoutes(fastify: FastifyInstance) {
   /**
    * POST /api/v1/webhooks/stripe
    * 
-   * Handles Stripe webhook events (invoice.paid).
+   * Handles Stripe webhook events:
+   * - checkout.session.completed: Activates subscription (sets subscriptionActive = true)
+   * - customer.subscription.deleted: Deactivates subscription (sets subscriptionActive = false)
+   * - customer.subscription.updated: Tracks subscription status changes
+   * - invoice.paid: Records referral payouts (existing functionality)
    * 
    * BACKEND SECURITY:
    * - Webhook signature verification via STRIPE_WEBHOOK_SECRET (NOT JWT)
@@ -67,12 +71,17 @@ export async function stripeWebhookRoutes(fastify: FastifyInstance) {
    * - Append-only payout ledger (no updates allowed)
    * - Idempotent: unique constraint on stripeInvoiceId prevents duplicates
    * - Zero commission during free month (checks freeMonthEndsAt)
+   * - Payment gate: subscriptionActive flag controls access to paid routes
    * 
-   * Business Rules:
-   * - Only invoice.paid events processed
+   * Business Rules (Referrals):
    * - 15% commission (1500 bps) on paid amount after free month
    * - Free month = no commission ledger entry
    * - Referral must exist and be linked to invoice customer
+   * 
+   * Business Rules (Payment Gate):
+   * - checkout.session.completed: Sets subscriptionActive = true (payment confirmed)
+   * - customer.subscription.deleted: Sets subscriptionActive = false (subscription cancelled)
+   * - PROFESSIONAL users without active subscription blocked from paid routes (403 payment_required)
    * 
    * Errors: 400 bad signature, 200 for unhandled events (webhook ack)
    */
@@ -234,6 +243,169 @@ export async function stripeWebhookRoutes(fastify: FastifyInstance) {
         } catch (error) {
           fastify.log.error(error, 'Error processing invoice.paid webhook');
           // Return 500 so Stripe retries
+          return reply.code(500).send({
+            error: 'Internal Server Error',
+            message: 'Failed to process webhook',
+          });
+        }
+      }
+
+      // PAYMENT GATE: Handle checkout.session.completed (payment confirmed)
+      if (event.type === 'checkout.session.completed') {
+        try {
+          const session = event.data.object as Stripe.Checkout.Session;
+          
+          // Extract origo_user_id from session metadata
+          const origoUserId = session.metadata?.origo_user_id;
+          
+          if (!origoUserId) {
+            fastify.log.warn({ session_id: session.id }, 'Checkout session has no origo_user_id metadata');
+            return reply.code(200).send({ received: true, skipped: 'no_origo_user_id' });
+          }
+
+          // SECURITY SOFT 1: Only activate if payment_status is paid or no_payment_required
+          if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
+            fastify.log.warn(
+              { session_id: session.id, payment_status: session.payment_status },
+              'Checkout session payment not confirmed - not activating subscription'
+            );
+            return reply.code(200).send({ received: true, skipped: 'payment_not_confirmed' });
+          }
+
+          // SECURITY SOFT 1: Verify session.customer matches User.stripeCustomerId (or set/link consistently)
+          const user = await prisma.user.findUnique({
+            where: { id: origoUserId },
+            select: { id: true, stripeCustomerId: true },
+          });
+
+          if (!user) {
+            fastify.log.error({ user_id: origoUserId, session_id: session.id }, 'User not found for checkout session');
+            return reply.code(200).send({ received: true, skipped: 'user_not_found' });
+          }
+
+          // If user has no stripeCustomerId, set it from session (link consistently)
+          // If user has stripeCustomerId, verify it matches session.customer (security check)
+          if (user.stripeCustomerId && user.stripeCustomerId !== session.customer) {
+            fastify.log.error(
+              { 
+                user_id: origoUserId, 
+                session_id: session.id, 
+                user_stripe_customer: user.stripeCustomerId,
+                session_customer: session.customer,
+              },
+              'SECURITY: session.customer mismatch - not activating subscription'
+            );
+            return reply.code(200).send({ received: true, skipped: 'customer_mismatch' });
+          }
+
+          // PAYMENT GATE: Activate subscription and link customer (fail-closed)
+          await prisma.user.update({
+            where: { id: origoUserId },
+            data: { 
+              subscriptionActive: true,
+              stripeCustomerId: session.customer as string, // Set/update customer link
+            },
+          });
+
+          fastify.log.info(
+            { user_id: origoUserId, session_id: session.id, payment_status: session.payment_status },
+            'Subscription activated (checkout.session.completed)'
+          );
+
+          return reply.code(200).send({ received: true });
+        } catch (error) {
+          fastify.log.error(error, 'Error processing checkout.session.completed webhook');
+          return reply.code(500).send({
+            error: 'Internal Server Error',
+            message: 'Failed to process webhook',
+          });
+        }
+      }
+
+      // PAYMENT GATE: Handle customer.subscription.deleted (subscription cancelled)
+      if (event.type === 'customer.subscription.deleted') {
+        try {
+          const subscription = event.data.object as Stripe.Subscription;
+          
+          // Get customer to find origo_user_id
+          const customer = await stripe.customers.retrieve(subscription.customer as string);
+          
+          if (!customer || customer.deleted) {
+            fastify.log.warn({ customer_id: subscription.customer }, 'Customer not found or deleted');
+            return reply.code(200).send({ received: true, skipped: 'customer_not_found' });
+          }
+
+          const origoUserId = (customer as Stripe.Customer).metadata?.origo_user_id;
+          
+          if (!origoUserId) {
+            fastify.log.info({ customer_id: customer.id }, 'Customer has no origo_user_id metadata');
+            return reply.code(200).send({ received: true, skipped: 'no_origo_user_id' });
+          }
+
+          // PAYMENT GATE: Deactivate subscription for user
+          await prisma.user.update({
+            where: { id: origoUserId },
+            data: { subscriptionActive: false },
+          });
+
+          fastify.log.info(
+            { user_id: origoUserId, subscription_id: subscription.id },
+            'Subscription deactivated (customer.subscription.deleted)'
+          );
+
+          return reply.code(200).send({ received: true });
+        } catch (error) {
+          fastify.log.error(error, 'Error processing customer.subscription.deleted webhook');
+          return reply.code(500).send({
+            error: 'Internal Server Error',
+            message: 'Failed to process webhook',
+          });
+        }
+      }
+
+      // PAYMENT GATE: Handle customer.subscription.updated (subscription status changes)
+      if (event.type === 'customer.subscription.updated') {
+        try {
+          const subscription = event.data.object as Stripe.Subscription;
+          
+          // Get customer to find origo_user_id
+          const customer = await stripe.customers.retrieve(subscription.customer as string);
+          
+          if (!customer || customer.deleted) {
+            fastify.log.warn({ customer_id: subscription.customer }, 'Customer not found or deleted');
+            return reply.code(200).send({ received: true, skipped: 'customer_not_found' });
+          }
+
+          const origoUserId = (customer as Stripe.Customer).metadata?.origo_user_id;
+          
+          if (!origoUserId) {
+            fastify.log.info({ customer_id: customer.id }, 'Customer has no origo_user_id metadata');
+            return reply.code(200).send({ received: true, skipped: 'no_origo_user_id' });
+          }
+
+          // PAYMENT GATE: Update subscription status based on Stripe status
+          // Active statuses: active, trialing
+          // Inactive statuses: incomplete, incomplete_expired, past_due, canceled, unpaid, paused
+          const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+
+          await prisma.user.update({
+            where: { id: origoUserId },
+            data: { subscriptionActive: isActive },
+          });
+
+          fastify.log.info(
+            {
+              user_id: origoUserId,
+              subscription_id: subscription.id,
+              status: subscription.status,
+              subscription_active: isActive,
+            },
+            'Subscription status updated (customer.subscription.updated)'
+          );
+
+          return reply.code(200).send({ received: true });
+        } catch (error) {
+          fastify.log.error(error, 'Error processing customer.subscription.updated webhook');
           return reply.code(500).send({
             error: 'Internal Server Error',
             message: 'Failed to process webhook',
