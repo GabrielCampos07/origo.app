@@ -1,10 +1,11 @@
 import { PrismaClient } from '@prisma/client';
-import { hashPassword, generateSecureToken } from '../src/lib/crypto';
+import { hashPassword, hashToken } from '../src/lib/crypto';
 
 const prisma = new PrismaClient();
 
 // Demo invite token constant (only used in seed for demo purposes)
 // In production, tokens are generated dynamically via generateSecureToken()
+// ⚠️  PRODUCTION NEVER LOGS TOKENS — this log is dev/demo only
 const DEMO_INVITE_TOKEN = 'demo-invite-token-origo-fisio-2026';
 
 async function main() {
@@ -37,8 +38,8 @@ async function main() {
   });
   console.log('✅ Professional profile:', profProfile.category, 'for', prof.email);
 
-  // Seed demo invite token (hash the demo token for storage)
-  const { hash: demoTokenHash } = generateSecureToken();
+  // Seed demo invite token (hash the stable demo token for idempotent upsert)
+  const demoTokenHash = hashToken(DEMO_INVITE_TOKEN);
   const demoInviteToken = await prisma.inviteToken.upsert({
     where: { tokenHash: demoTokenHash },
     update: {},
@@ -49,7 +50,8 @@ async function main() {
       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
     },
   });
-  console.log('✅ Demo invite token created (never expires in demo)');
+  console.log('✅ Demo invite token created (idempotent, never expires in demo)');
+  console.log('   Plaintext token (DEMO ONLY - prod never logs):', DEMO_INVITE_TOKEN);
   console.log('   Token hash (first 16 chars):', demoInviteToken.tokenHash.substring(0, 16) + '...');
 
   // Seed user 2: aluno@origo.dev (STUDENT with name and enrollment)

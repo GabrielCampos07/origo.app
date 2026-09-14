@@ -109,17 +109,26 @@ REVOKE ALL ON TABLE public.users FROM api_app_role;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.users TO api_app_role;
 
 -- ==================== professional_profiles ====================
+-- Revoke ALL first to ensure clean state, then grant specific privileges
+REVOKE ALL ON TABLE public.professional_profiles FROM api_app_role;
+
 -- Grant SELECT + INSERT + UPDATE on professional_profiles
 -- Explicitly NO DELETE (profile removal reserved for DBA)
 GRANT SELECT, INSERT, UPDATE ON TABLE public.professional_profiles TO api_app_role;
 
 -- ==================== invite_tokens ====================
+-- Revoke ALL first to ensure clean state, then grant specific privileges
+REVOKE ALL ON TABLE public.invite_tokens FROM api_app_role;
+
 -- Grant SELECT + INSERT + UPDATE on invite_tokens
 -- UPDATE needed for marking tokens as used (usedAt timestamp)
 -- Explicitly NO DELETE (token purge via elevated role D8 batch job)
 GRANT SELECT, INSERT, UPDATE ON TABLE public.invite_tokens TO api_app_role;
 
 -- ==================== enrollments ====================
+-- Revoke ALL first to ensure clean state, then grant specific privileges
+REVOKE ALL ON TABLE public.enrollments FROM api_app_role;
+
 -- Grant SELECT + INSERT + UPDATE on enrollments
 -- UPDATE needed for status transitions (ACTIVE → REVOKED) and endedAt
 -- Explicitly NO DELETE (enrollment records are permanent)
