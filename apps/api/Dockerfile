@@ -16,6 +16,9 @@ COPY apps/api ./apps/api
 # Copy libs if present (shared packages)
 COPY libs ./libs
 
+# Install build dependencies for native modules (argon2, etc.)
+RUN apk add --no-cache python3 make g++
+
 # Install dependencies for @origo/api workspace
 RUN npm ci --workspace=@origo/api --include-workspace-root
 
@@ -36,13 +39,11 @@ COPY package.json package-lock.json ./
 # Copy API workspace package.json
 COPY apps/api/package.json ./apps/api/
 
-# Install production dependencies only
-RUN npm ci --workspace=@origo/api --omit=dev --include-workspace-root
+# Copy production node_modules from builder (includes compiled native modules)
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy Prisma schema and generated client from builder
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 # Copy built application
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
