@@ -19,6 +19,12 @@ const prisma = new PrismaClient();
  * - Legal 403 middleware already enforced by index.ts (PROFESSIONAL docs required)
  * - No Stripe secret keys exposed to client
  * - success/cancel URLs use FRONTEND_URL env (tamper-proof)
+ * 
+ * P0 TRIAL SECURITY LOCK:
+ * - 14-day trial (trial_period_days: 14) ONLY via valid referral/indication code
+ * - Regular paid signup has NO trial_period_days (fail-closed)
+ * - Server-side validation prevents client from forcing trial
+ * - Invalid/missing referral = no trial, no discount
  */
 
 /**
@@ -117,8 +123,9 @@ export async function checkoutRoutes(fastify: FastifyInstance) {
    * - success/cancel URLs constructed server-side from FRONTEND_URL env
    * 
    * BUSINESS RULES:
-   * - 14 day trial included in subscription
-   * - referral_code applies 100% off first month (via Stripe coupon)
+   * - 14-day trial ONLY via valid referral/indication code (P0 SECURITY LOCK)
+   * - Regular paid signup has NO trial_period_days (fail-closed)
+   * - referral_code applies 100% off first month (via Stripe coupon) + 14-day trial
    * - Referral attribution recorded in DB before checkout
    * 
    * Errors: 401 unauthorized, 403 forbidden (non-PROFESSIONAL), 422 validation, 500 server error
