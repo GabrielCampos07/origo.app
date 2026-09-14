@@ -163,7 +163,7 @@ components:
           example: mySecurePassword123
         category:
           type: string
-          enum: [FISIOTERAPIA, EDUCACAO_FISICA, PERSONAL]
+          enum: [FISIOTERAPIA, EDUCACAO_FISICA]
           example: FISIOTERAPIA
       required:
         - name
@@ -252,7 +252,7 @@ components:
           example: valid
         category:
           type: string
-          enum: [FISIOTERAPIA, EDUCACAO_FISICA, PERSONAL]
+          enum: [FISIOTERAPIA, EDUCACAO_FISICA]
           description: Professional category (only returned for valid invites)
           example: FISIOTERAPIA
         professional_name:
@@ -503,7 +503,7 @@ paths:
         
         **Product Rules:**
         - No plan gate at registration (trial starts after legal acceptance)
-        - Category must be valid enum: FISIOTERAPIA | EDUCACAO_FISICA | PERSONAL
+        - Category must be valid enum: FISIOTERAPIA | EDUCACAO_FISICA
         
         **Rate limits:**
         - 5 requests/15min per IP
