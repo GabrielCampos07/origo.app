@@ -88,7 +88,12 @@ export default function InviteStudentPage() {
     setSubmitting(false);
 
     if (result.ok) {
-      setInviteUrl(result.data.invite_url);
+      // P1 SEC (FRONTEND SECURITY CHECKER): Hash-based invite URL #token=
+      // Backend returns opaque token; frontend constructs full URL with hash
+      const token = result.data.code || result.data.invite_url.split('/').pop() || "";
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+      const inviteUrl = `${baseUrl}/convite#token=${encodeURIComponent(token)}`;
+      setInviteUrl(inviteUrl);
       setEmail("");
       setCategoria("");
       return;

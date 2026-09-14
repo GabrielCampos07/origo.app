@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiPost } from "@/lib/api";
@@ -43,6 +43,17 @@ export default function ProfessionalSignupPage() {
     categoria?: string;
   }>({});
   const [error, setError] = useState<string | null>(null);
+
+  // P1 SEC (FRONTEND SECURITY CHECKER): Referrer-Policy: no-referrer on signup pages
+  useEffect(() => {
+    const meta = document.createElement("meta");
+    meta.name = "referrer";
+    meta.content = "no-referrer";
+    document.head.appendChild(meta);
+    return () => {
+      document.head.removeChild(meta);
+    };
+  }, []);
 
   function validate(): boolean {
     const next: Record<string, string> = {};
