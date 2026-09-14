@@ -461,7 +461,7 @@ export default function HomePage() {
             <div className="flex items-center gap-2.5">
               <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0">
                 <Image
-                  src="/assets/logo-lockup.png"
+                  src="/assets/logo-icon.png"
                   alt=""
                   fill
                   className="object-cover"
@@ -484,7 +484,7 @@ export default function HomePage() {
             {/* Wordmark */}
             <div className="relative w-[180px] h-12 mb-1">
               <Image
-                src="/assets/logo-lockup.png"
+                src="/assets/logo-wordmark.png"
                 alt="beOrigo"
                 fill
                 className="object-contain object-left"
@@ -575,7 +575,7 @@ export default function HomePage() {
             {/* Secondary Link */}
             <p className="text-[#66736b] text-[13px] text-center mt-2">
               <a href="/login" className="hover:text-[var(--brand-primary)] transition-colors" onClick={closeMenu}>
-                Sou aluno → /login
+                Sou aluno
               </a>
               {" · "}
               <a href="mailto:contact@beorigo.app" className="hover:text-[var(--brand-primary)] transition-colors">
