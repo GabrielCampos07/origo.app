@@ -1,0 +1,62 @@
+name: Deploy API to Fly.io Staging
+
+on:
+  push:
+    branches:
+      - staging
+    paths:
+      - 'apps/api/**'
+      - 'libs/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'apps/api/fly.toml'
+      - '.github/workflows/deploy-api-staging.yml'
+
+jobs:
+  deploy:
+    name: Deploy to beorigo-api-staging
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io staging
+        run: |
+          flyctl deploy \
+            --config apps/api/fly.toml \
+            --dockerfile apps/api/Dockerfile \
+            --app beorigo-api-staging \
+            --remote-only \
+            --strategy immediate
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Health check
+        run: |
+          echo "Waiting for deployment to be ready..."
+          sleep 10
+          
+          MAX_ATTEMPTS=12
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            echo "Health check attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS"
+            
+            if curl -f -s -o /dev/null -w "%{http_code}" https://beorigo-api-staging.fly.dev/health | grep -q "200"; then
+              echo "✓ Health check passed!"
+              exit 0
+            fi
+            
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+              echo "Health check failed, retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+          
+          echo "✗ Health check failed after $MAX_ATTEMPTS attempts"
+          exit 1
