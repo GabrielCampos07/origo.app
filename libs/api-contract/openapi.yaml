@@ -181,6 +181,11 @@ components:
         name:
           type: string
           example: Maria Santos
+        email:
+          type: string
+          format: email
+          description: Student email (validated, unique citext)
+          example: maria@example.com
         password:
           type: string
           format: password
@@ -189,6 +194,7 @@ components:
       required:
         - invite_token
         - name
+        - email
         - password
 
     CreateInviteRequest:
@@ -548,6 +554,11 @@ paths:
       description: |
         Registers a new student user via valid invite token and creates enrollment.
         
+        **MUST-FIX (BACKEND SECURITY):**
+        - Requires real email from request body (validated + unique citext)
+        - Email validated for format and uniqueness
+        - No temp/generated emails (must use actual student email)
+        
         **Security (Bloco A Slice 1 - 7 LOCKED REQUIREMENTS):**
         1. Token hash-only at rest, TTL, single-use (usedAt)
         2. User.role = STUDENT server-side only (never client-supplied)
@@ -609,6 +620,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
+                invalid_email:
+                  summary: Invalid email format
+                  value:
+                    error: Validation Error
+                    message: Invalid email format
+                email_exists:
+                  summary: Email already registered
+                  value:
+                    error: Validation Error
+                    message: Email already registered
                 weak_password:
                   summary: Password too short
                   value:

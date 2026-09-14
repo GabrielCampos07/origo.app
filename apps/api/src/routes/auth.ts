@@ -42,6 +42,7 @@ interface RegisterProfessionalBody {
 interface RegisterStudentBody {
   invite_token: string;
   name: string;
+  email: string;
   password: string;
 }
 
@@ -573,7 +574,7 @@ export async function authRoutes(fastify: FastifyInstance) {
    * 6. Validates unique ACTIVE enrollment constraint (Sec 4)
    * 7. Student can only enroll via valid invite (Sec 7)
    * 
-   * Body: { invite_token, name, password }
+   * Body: { invite_token, name, email, password }
    * Returns: { access_token, refresh_token, user, missing_doc_versions }
    * Errors: 422 validation, 410 invalid/expired/used invite
    */
@@ -591,13 +592,20 @@ export async function authRoutes(fastify: FastifyInstance) {
       request: FastifyRequest<{ Body: RegisterStudentBody }>,
       reply: FastifyReply
     ) => {
-      const { invite_token, name, password } = request.body;
+      const { invite_token, name, email, password } = request.body;
 
       // Validation (422)
-      if (!invite_token || !name || !password) {
+      if (!invite_token || !name || !email || !password) {
         return reply.code(422).send({
           error: 'Validation Error',
-          message: 'Invite token, name, and password are required',
+          message: 'Invite token, name, email, and password are required',
+        });
+      }
+
+      if (!isValidEmail(email)) {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'Invalid email format',
         });
       }
 
@@ -648,6 +656,18 @@ export async function authRoutes(fastify: FastifyInstance) {
           });
         }
 
+        // Check if email already exists (unique constraint)
+        const existingUser = await prisma.user.findUnique({
+          where: { email: email.toLowerCase() },
+        });
+
+        if (existingUser) {
+          return reply.code(422).send({
+            error: 'Validation Error',
+            message: 'Email already registered',
+          });
+        }
+
         // Hash password
         const passwordHash = await hashPassword(password);
 
@@ -657,13 +677,10 @@ export async function authRoutes(fastify: FastifyInstance) {
         // 3. Mark invite as used
         const result = await prisma.$transaction(async (tx) => {
           // SECURITY (Sec 2): Create user with STUDENT role (never trust client)
-          // Use professional's email initially (can be updated later)
-          // Generate unique email: student-{timestamp}-{random}@temp.origo.app
-          const tempEmail = `student-${Date.now()}-${Math.random().toString(36).substring(7)}@temp.origo.app`;
-          
+          // Use validated email from request body (required field)
           const newUser = await tx.user.create({
             data: {
-              email: tempEmail, // Temporary email (invite doesn't carry student email)
+              email: email.toLowerCase(), // SECURITY: Use validated email from body
               passwordHash,
               name,
               role: UserRole.STUDENT, // SECURITY: Server-side role assignment
