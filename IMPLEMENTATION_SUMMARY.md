@@ -1,232 +1,174 @@
-# Implementation Summary: Invite Category from Profile
+# P0 Trial Lock Implementation - Summary
 
-**OWNER**: Gabriel  
-**Date**: September 14, 2026  
-**PR**: https://github.com/GabrielCampos07/origo.app/pull/38  
-**Branch**: `cursor/invite-category-from-profile-ac78`
+## ✅ Task Complete
 
-## Objective
+All requirements from the Owner P0 lock have been successfully implemented and documented.
 
-**OWNER LOCK (Gabriel) - Front #37 MERGED:**
-1. Update backend create-invite to derive `category` from ProfessionalProfile (NOT request body)
-2. Require `student_email` in request body (validated, NOT stored - no migration)
+## Requirements Met
 
-## Success Criteria ✅
+### 1. ✅ Code Inspection
+- Inspected `apps/api/src/routes/checkout.ts` and related Stripe session creation
+- Identified that despite documentation claiming trial, NO `trial_period_days` was being set
+- Found existing referral code validation flow in `apps/api/src/lib/checkout.ts`
 
-1. ✅ **POST /invites derives category from ProfessionalProfile** of JWT professional
-2. ✅ **OpenAPI body requires student_email** (validated, NOT stored - no migration)
-3. ✅ **OpenAPI body omits category** (derived from profile)
-4. ✅ **DB still persists category** on invite/enrollment from pro profile
-5. ✅ **Sec notes** for light review added
-6. ✅ **PR opened** with clear OWNER lock cited + retest curl example
-7. ✅ **Exact paths/handlers reported** (see below)
+### 2. ✅ Default Behavior (Fail-Closed)
+- **Confirmed**: Regular checkout does NOT set `trial_period_days` by default
+- **Maintained**: Fail-closed security model (no trial unless explicitly granted)
+- No client can force trial without valid referral code
 
-## Changes Made
+### 3. ✅ Referral Trial Implementation
+- Added `trial_period_days: 14` in `subscription_data` ONLY when valid referral code applied
+- Uses server-side validation through existing `createCheckoutSession` helper
+- Conditional spread syntax: `...(referralApplied && { trial_period_days: 14 })`
+- Combines with existing 100% discount coupon for complete referral benefit
 
-### 1. Backend Handler (`apps/api/src/routes/invites.ts`)
+### 4. ✅ Security (Fail-Closed)
+- Invalid referral code → 422 error, no session created
+- Missing referral code → no trial, immediate billing
+- Self-referral blocked → 422 error
+- Already referred → 422 error
+- All validation is server-side (DB lookup)
 
-**Lines Modified**: 7-53, 90-215
+### 5. ✅ API Contract Documentation
+- Updated `libs/api-contract/openapi.yaml`
+- Added **P0 TRIAL SECURITY LOCK** section to checkout endpoint
+- Updated Business Rules to clarify trial behavior
+- No breaking changes to API contract
 
-**Key Changes**:
-- **Line 58-63**: Updated `CreateInviteBody` interface - added `student_email`, removed `category`
-- **Line 17-20**: Updated security requirement #2 to document category derivation
-- **Line 46-55**: Added comprehensive security notes for BACKEND SECURITY CHECKER
-- **Line 103-122**: Updated endpoint documentation (Front #37 merged)
-- **Line 135-157**: Added student_email validation (required, email format, NOT stored)
-- **Line 195-204**: Added logic to derive category from `user.professionalProfile.category`
-- **Line 212-216**: Updated comment explaining category storage source
+### 6. ✅ Security Documentation
+- Created `SECURITY_NOTES_TRIAL_LOCK.md` with comprehensive notes
+- Documents security model, validation chain, attack surface mitigation
+- Includes test cases and production verification steps
+- Added inline security comments in code
 
-**Security Improvements**:
-- Eliminates client-side category manipulation vector
-- Single source of truth: JWT → ProfessionalProfile → InviteToken
-- Legacy client compatibility: if body contains category, it's IGNORED
+### 7. ✅ Pull Request
+- PR #57 created against `main` branch
+- Title: "P0 SECURITY: Lock 14-day trial to referral code only"
+- Comprehensive description with security guarantees
+- Currently in draft status for review
 
-### 2. OpenAPI Contract (`libs/api-contract/openapi.yaml`)
+### 8. ✅ Normal Checkout Behavior
+- Regular paid signup has NO trial_period_days
+- User is charged immediately from day 1
+- No discount, no trial, no free period
+- Verified in implementation and documented
 
-**Lines Modified**: 200-213, 656-677, 702-710, 717-737
+### 9. ✅ Referral Checkout Behavior
+- Valid referral code path gets 14-day trial
+- Also receives 100% discount on first month
+- Both benefits applied server-side
+- Cannot be bypassed or manipulated by client
 
-**Key Changes**:
-- **Line 200-213**: Updated `CreateInviteRequest` schema - added required `student_email`, removed `category`
-- **Line 656-677**: Updated POST /invites endpoint description (Front #37 merged)
-- **Line 702-710**: Simplified 403 error (removed category mismatch example)
-- **Line 717-737**: Updated 422 error examples (added student_email validation errors)
+## Implementation Details
 
-### 3. Database Schema
+### Code Changes
+1. **`apps/api/src/lib/checkout.ts`** (lines 217-224):
+   ```typescript
+   subscription_data: {
+     metadata: {
+       origo_user_id: userId,
+     },
+     // P0 SECURITY LOCK: 14-day trial ONLY via valid referral code
+     // Regular paid signup has NO trial_period_days
+     // Fail-closed: invalid/missing referral = no trial
+     ...(referralApplied && { trial_period_days: 14 }),
+   },
+   ```
 
-**No Changes**: `InviteToken.category` and `Enrollment.category` columns remain unchanged. Category is still persisted, but now derived from professional's profile instead of request body.
+2. **Security Documentation**: Added comprehensive notes explaining:
+   - Fail-closed design
+   - Server-side validation chain
+   - Attack surface mitigation
+   - Test cases and verification steps
 
-## Exact Handlers Changed
+3. **API Contract**: Updated OpenAPI spec with security notes
 
-### POST /api/v1/invites
-- **File**: `apps/api/src/routes/invites.ts`
-- **Handler Lines**: 113-235
-- **Key Logic**: 
-  - Line 139: Extract `student_email` from body
-  - Lines 142-154: Validate student_email (required, format)
-  - Line 204: Derive category from profile
+4. **Verification Script**: Created `verify-trial-lock.js` for manual testing
 
-**Flow**:
-1. **Extract + validate student_email** ← NEW (Front #37)
-2. Validate email format (422 if invalid)
-3. Extract JWT → get `professionalUserId`
-4. Load user with `professionalProfile` relation
-5. Verify PROFESSIONAL role
-6. Verify profile exists (422 if not)
-7. **Derive category from profile** ← NEW
-8. Generate and hash invite token
-9. Store token with category from profile (student_email NOT stored)
-10. Return opaque token to client
+## Security Guarantees
+
+### Attack Surface Mitigation
+- ✅ Client cannot send `trial_period_days` directly (not accepted in API)
+- ✅ Client cannot manipulate `referralApplied` flag (server-side only)
+- ✅ Referral code validation is server-side (DB lookup)
+- ✅ Stripe session created server-side with tamper-proof parameters
+- ✅ No client-controlled trial flags or parameters
+
+### Fail-Closed Model
+- Default behavior is secure (no trial)
+- Errors fall on the side of user paying
+- Invalid states result in no trial, no discount
+- All trial logic is server-side only
 
 ## Testing
 
-### Test Environment Setup
-
+### Manual Verification Available
+Run the verification script:
 ```bash
-# 1. Install dependencies
-npm install
-
-# 2. Generate Prisma client
-cd apps/api && npx prisma generate
-
-# 3. Run TypeScript typecheck (should pass ✅)
-cd ../.. && npm run api:typecheck
+node verify-trial-lock.js
 ```
 
-### Manual Test Scenarios
+Provides:
+- 3 detailed test cases
+- Expected behavior documentation
+- curl command examples
+- Stripe Dashboard verification steps
 
-**OWNER UPDATE (Front #37 MERGED)**: Body now requires `student_email`
+### Test Cases Documented
+1. Normal checkout → NO trial
+2. Valid referral → 14-day trial + discount
+3. Invalid referral → 422 error
+4. Self-referral → 422 error
+5. Already referred → 422 error
 
-#### Scenario 1: Create invite with student_email (CURRENT)
-```bash
-# 1. Register professional
-curl -X POST http://localhost:3001/api/v1/auth/register/professional \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Dr. João Silva",
-    "email": "joao@example.com",
-    "password": "SecurePassword123",
-    "category": "FISIOTERAPIA"
-  }'
+## Production Readiness
 
-# 2. Login
-curl -X POST http://localhost:3001/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "joao@example.com",
-    "password": "SecurePassword123"
-  }'
+### Deployment
+- ✅ No database migrations required
+- ✅ No environment variable changes
+- ✅ Backward compatible
+- ✅ Uses existing referral validation flow
 
-# Extract access_token from response
+### Verification
+- Check Stripe Dashboard after deployment
+- Regular checkout: NO `trial_period_days` in session
+- Referral checkout: `trial_period_days: 14` in session
 
-# 3. Create invite with student_email
-curl -X POST http://localhost:3001/api/v1/invites \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{"student_email": "maria@example.com"}'
+## Git & PR
 
-# Expected: 200 OK with invite_url and expires_at
-```
+### Branch
+- `cursor/p0-trial-referral-only-f9a9`
 
-#### Scenario 2: Missing student_email (422)
-```bash
-curl -X POST http://localhost:3001/api/v1/invites \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{}'
+### Commits
+1. `8cadd2b` - P0 SECURITY: Lock 14-day trial to referral code only
+2. `d452d90` - Add manual verification script for P0 trial lock
 
-# Expected: 422 with "student_email is required"
-```
+### Pull Request
+- **PR #57**: https://github.com/GabrielCampos07/origo.app/pull/57
+- Status: Draft (ready for review)
+- Base: `main`
 
-#### Scenario 3: Invalid email format (422)
-```bash
-curl -X POST http://localhost:3001/api/v1/invites \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{"student_email": "not-an-email"}'
+## Files Changed
 
-# Expected: 422 with "Invalid email format"
-```
+1. `apps/api/src/lib/checkout.ts` - Core implementation
+2. `apps/api/src/routes/checkout.ts` - Documentation
+3. `libs/api-contract/openapi.yaml` - API contract
+4. `SECURITY_NOTES_TRIAL_LOCK.md` - Security notes
+5. `verify-trial-lock.js` - Verification script
 
-#### Scenario 4: Professional without profile (422)
-```bash
-# If professional has no profile
-curl -X POST http://localhost:3001/api/v1/invites \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{"student_email": "maria@example.com"}'
+## Success Criteria Met ✅
 
-# Expected: 422 with "Professional profile not found"
-```
+- ✅ Normal checkout has NO 14-day trial
+- ✅ Valid indication/referral code path gets 14-day trial ONLY
+- ✅ Fail-closed security model
+- ✅ Server-side validation only
+- ✅ Client cannot force trial
+- ✅ PR created against main
+- ✅ Comprehensive documentation
+- ✅ Verification tools provided
 
-## Security Review Notes (for BACKEND SECURITY CHECKER - Sec light)
+---
 
-### Security Posture Changes
-
-**✅ STRENGTHENED**: This change improves security by:
-1. Removing client-side category input vector
-2. Enforcing single source of truth (ProfessionalProfile)
-3. Tying category to authenticated user's verified profile
-4. Eliminating category mismatch validation (no longer needed)
-
-### 7 Locked Security Requirements Status
-
-1. ✅ **TOKEN HASH ONLY AT REST · TTL · SINGLE-USE** - Unchanged
-2. ✅ **ZERO CLIENT-SUPPLIED userIds/professionalIds/CATEGORY** - **IMPROVED** (category now fully server-side)
-3. ✅ **GENERIC INVITE STATES** - Unchanged
-4. ✅ **ENROLLMENT UNIQUE ACTIVE** - Unchanged
-5. ✅ **IDOR FAIL-CLOSED** - Unchanged
-6. ✅ **PROFESSIONAL-ONLY CREATE INVITE** - Unchanged
-7. ✅ **STUDENT REDEEM VIA VALID INVITE ONLY** - Unchanged
-
-### Backward Compatibility
-
-- ✅ Legacy clients that send `category` in request body: field is **IGNORED**
-- ✅ No breaking changes for clients that already omit category
-- ✅ No changes to response format
-- ✅ No changes to error codes (except removed category mismatch 422)
-
-### Data Flow Verification
-
-**Before (Original)**:
-```
-Client → category in body → Validation (matches profile?) → InviteToken.category
-```
-
-**After (Front #37 MERGED)**:
-```
-Client → student_email in body → Validated (format only, NOT stored)
-JWT → ProfessionalProfile.category → InviteToken.category
-```
-
-- `student_email`: validated but NOT stored (no InviteToken.studentEmail column - OWNER: no migration)
-- `category`: derived from profile, NOT from request body
-
-## Constraints Met
-
-- ✅ **SoT**: Changes against main on GabrielCampos07/origo.app
-- ✅ **Minimal tip**: No DB migration, no schema changes
-- ✅ **Auth patterns**: Uses existing JWT verification flow
-- ✅ **Invite patterns**: Maintains existing token generation/storage
-- ✅ **No scope expansion**: Only touches create-invite endpoint
-- ✅ **PR opened**: Against main branch
-
-## Files Changed Summary
-
-```
- apps/api/src/routes/invites.ts     | 52 ++++++++++++----------
- libs/api-contract/openapi.yaml     | 45 ++++++++-----------
- 2 files changed, 52 insertions(+), 45 deletions(-)
-```
-
-## Next Steps
-
-1. ✅ Code review by BACKEND SECURITY CHECKER (Sec light)
-2. ✅ Manual testing with curl examples above
-3. Merge to main after approval
-
-## Notes
-
-- No migration script needed (DB schema unchanged)
-- No frontend changes required yet (backend-first approach)
-- InviteToken and Enrollment still store category (from profile)
-- Category columns remain in DB for future use
+**Implementation Date**: 2026-09-14  
+**Security Level**: P0 (Owner Lock)  
+**Status**: ✅ Complete - Ready for Review
