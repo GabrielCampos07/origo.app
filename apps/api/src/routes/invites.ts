@@ -46,7 +46,7 @@ interface CreateInviteBody {
   category: ProfessionalCategory;
 }
 
-interface ValidateInviteParams {
+interface ValidateInviteBody {
   token: string;
 }
 
@@ -206,19 +206,25 @@ export async function inviteRoutes(fastify: FastifyInstance) {
   );
 
   /**
-   * GET /api/v1/invites/:token
+   * POST /api/v1/invites/validate
    * Validate invite token (public endpoint)
    * 
-   * SECURITY:
+   * SECURITY (BACKEND SECURITY P1):
+   * - Token in request body (NOT URL path/query) - prevents logging in:
+   *   · Server access logs
+   *   · Browser history
+   *   · Referer headers
+   *   · Proxy logs
    * - Public endpoint (no auth required) (Sec 7)
    * - Returns only generic states: valid | expired | used | invalid (Sec 3)
    * - No PII exposure (no professional name/email) (Sec 3)
    * - No distinction between "not found" and "invalid" (Sec 3)
    * 
+   * Body: { token: string }
    * Returns: { valid: boolean, state: 'valid' | 'expired' | 'used' | 'invalid', category?: string }
    */
-  fastify.get<{ Params: ValidateInviteParams }>(
-    '/api/v1/invites/:token',
+  fastify.post<{ Body: ValidateInviteBody }>(
+    '/api/v1/invites/validate',
     {
       config: {
         rateLimit: {
@@ -227,11 +233,11 @@ export async function inviteRoutes(fastify: FastifyInstance) {
         },
       },
     },
-    async (request: FastifyRequest<{ Params: ValidateInviteParams }>, reply: FastifyReply) => {
-      const { token } = request.params;
+    async (request: FastifyRequest<{ Body: ValidateInviteBody }>, reply: FastifyReply) => {
+      const { token } = request.body;
 
-      if (!token) {
-        // SECURITY (Sec 3): Generic error (no distinction)
+      // SECURITY (Sec 3): Generic error for missing token
+      if (!token || typeof token !== 'string') {
         return reply.code(200).send({
           valid: false,
           state: 'invalid',

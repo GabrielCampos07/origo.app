@@ -134,7 +134,7 @@ async function start() {
           },
           invites: {
             create: 'POST /api/v1/invites',
-            validate: 'GET /api/v1/invites/:token',
+            validate: 'POST /api/v1/invites/validate',
           },
           legal: {
             accept: 'POST /api/v1/legal/accept',
@@ -202,8 +202,8 @@ async function start() {
       // Extract path without query parameters (prevent bypass via ?foo=bar)
       const requestPath = request.url.split('?')[0];
 
-      // SECURITY: Also exempt GET /api/v1/invites/:token (public validate endpoint)
-      if (requestPath.startsWith('/api/v1/invites/')) {
+      // SECURITY: Also exempt POST /api/v1/invites/validate (public validate endpoint)
+      if (requestPath === '/api/v1/invites/validate') {
         return;
       }
 

@@ -217,6 +217,16 @@ components:
         - invite_url
         - expires_at
 
+    ValidateInviteRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Opaque invite token to validate (in body, NOT URL)
+          example: abc123def456ghi789...
+      required:
+        - token
+
     ValidateInviteResponse:
       type: object
       properties:
@@ -698,11 +708,22 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /api/v1/invites/{token}:
-    get:
+  /api/v1/invites/validate:
+    post:
       summary: Validate invite token
       description: |
         Validates an invite token without exposing PII (public endpoint).
+        
+        **SECURITY (BACKEND SECURITY P1):**
+        - Token in request body (NOT URL path/query) - prevents logging in:
+          · Server access logs
+          · Browser history
+          · Referer headers
+          · Proxy logs
+        - Generic states only: valid | expired | used | invalid
+        - No PII exposure (no professional name/email)
+        - No distinction between "not found" and "invalid"
+        - Returns category hint only for valid invites
         
         **Security (Bloco A Slice 1 - 7 LOCKED REQUIREMENTS):**
         1. Token hashed for lookup (SHA-256)
@@ -720,14 +741,12 @@ paths:
       operationId: validateInvite
       tags:
         - Invites
-      parameters:
-        - name: token
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Opaque invite token to validate
-          example: abc123def456ghi789...
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateInviteRequest'
       responses:
         '200':
           description: Validation result (always 200, even for invalid tokens)
@@ -1516,7 +1535,7 @@ components:
         **Exempt routes (no 403):**
         - /health
         - /api/v1/auth/* (all auth routes including registration)
-        - /api/v1/invites/:token (public validate endpoint)
+        - /api/v1/invites/validate (public POST endpoint, token in body)
         - /api/v1/legal/accept
         - /api/v1/legal/missing
         - /api/v1/referrals/validate (public)
