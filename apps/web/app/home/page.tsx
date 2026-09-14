@@ -457,18 +457,7 @@ export default function HomePage() {
       >
         <div className="flex flex-col h-full">
           {/* Top bar */}
-          <div className="flex items-center justify-between px-5 py-3 h-[56px] shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0">
-                <Image
-                  src="/assets/logo-icon.png"
-                  alt=""
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <span className="font-semibold text-lg text-[#2e3833]">beOrigo</span>
-            </div>
+          <div className="flex items-center justify-end px-5 py-3 h-[56px] shrink-0">
             <button
               type="button"
               className="flex items-center justify-center w-11 h-11 rounded-lg cursor-pointer touch-manipulation"
@@ -481,14 +470,24 @@ export default function HomePage() {
 
           {/* Menu panel */}
           <nav className="flex-1 flex flex-col gap-1 px-6 pt-6 pb-10 overflow-y-auto">
-            {/* Wordmark */}
-            <div className="relative w-[180px] h-12 mb-1">
-              <Image
-                src="/assets/logo-wordmark.png"
-                alt="beOrigo"
-                fill
-                className="object-contain object-left"
-              />
+            {/* Brand mark: icon + wordmark */}
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="relative w-8 h-8 shrink-0">
+                <Image
+                  src="/assets/logo-icon.png"
+                  alt=""
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <div className="relative w-[180px] h-12">
+                <Image
+                  src="/assets/logo-wordmark.png"
+                  alt="beOrigo"
+                  fill
+                  className="object-contain object-left"
+                />
+              </div>
             </div>
 
             <p className="text-[#66736b] text-[13px] font-medium mb-1">Navegação</p>
