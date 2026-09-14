@@ -36,7 +36,7 @@ interface RegisterProfessionalBody {
   name: string;
   email: string;
   password: string;
-  category: 'FISIOTERAPIA' | 'EDUCACAO_FISICA' | 'PERSONAL';
+  category: 'FISIOTERAPIA' | 'EDUCACAO_FISICA';
 }
 
 interface RegisterStudentBody {
@@ -470,8 +470,10 @@ export async function authRoutes(fastify: FastifyInstance) {
         });
       }
 
-      // SECURITY (Sec 2): Validate category against enum server-side
-      if (!Object.values(ProfessionalCategory).includes(category as any)) {
+      // OWNER LOCK (Gabriel): Only accept FISIOTERAPIA and EDUCACAO_FISICA
+      // SECURITY: Generic 422 without leaking allowed values
+      const allowedCategories = ['FISIOTERAPIA', 'EDUCACAO_FISICA'];
+      if (!allowedCategories.includes(category)) {
         return reply.code(422).send({
           error: 'Validation Error',
           message: 'Invalid professional category',
