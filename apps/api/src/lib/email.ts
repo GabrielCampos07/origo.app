@@ -97,3 +97,72 @@ Este é um email automático, não responda.
     encoding: 'base64', // Prevent quoted-printable from mangling = in #token= URL
   });
 }
+
+/**
+ * Send invite email to student (best-effort, soft-fail)
+ * INFRA: Resend domain (beorigo.app) may be unverified - failures logged but not thrown
+ */
+export async function sendInviteEmail(
+  studentEmail: string,
+  inviteToken: string
+): Promise<void> {
+  const inviteUrl = `${FRONTEND_URL}/convite#token=${inviteToken}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Convite Origo</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h1 style="color: #2c3e50;">Você foi convidado!</h1>
+    <p>Você recebeu um convite para se cadastrar na plataforma Origo.</p>
+    <p>Clique no link abaixo para aceitar o convite e criar sua conta:</p>
+    <p style="margin: 30px 0;">
+      <a href="${inviteUrl}" 
+         style="background-color: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
+        Aceitar Convite
+      </a>
+    </p>
+    <p><strong>Este link expira em 30 dias.</strong></p>
+    <p style="color: #7f8c8d; font-size: 14px;">
+      Se você não esperava este convite, pode ignorar este email com segurança.
+    </p>
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    <p style="color: #95a5a6; font-size: 12px;">
+      Equipe Origo<br>
+      Este é um email automático, não responda.
+    </p>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const text = `
+Você foi convidado!
+
+Você recebeu um convite para se cadastrar na plataforma Origo.
+
+Clique no link abaixo para aceitar o convite e criar sua conta:
+${inviteUrl}
+
+Este link expira em 30 dias.
+
+Se você não esperava este convite, pode ignorar este email com segurança.
+
+---
+Equipe Origo
+Este é um email automático, não responda.
+  `.trim();
+
+  await getTransporter().sendMail({
+    from: SMTP_FROM,
+    to: studentEmail,
+    subject: 'Você foi convidado - Origo',
+    text,
+    html,
+    encoding: 'base64', // Prevent quoted-printable from mangling = in #token= URL
+  });
+}

@@ -41,14 +41,24 @@ enum EnrollmentStatus {
 // P0 Auth Schema
 // Tokens armazenados APENAS como hash (SHA-256)
 // Purge D8: expired/used reset tokens devem ser removidos via job batch (cron diário recomendado)
+//
+// PAYMENT GATE (P0 LOCK - Gabriel):
+// - stripeCustomerId: Links user to Stripe customer (nullable, set on first checkout)
+// - subscriptionActive: Enforces payment gate for PROFESSIONAL users (default false)
+//   · Set to true by checkout.session.completed webhook (payment confirmed)
+//   · Set to false by customer.subscription.deleted webhook (subscription cancelled)
+//   · PROFESSIONAL users with subscriptionActive=false are blocked from paid routes (403 payment_required)
+//   · STUDENT users: field ignored (not subject to payment gate)
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique @db.Citext
-  passwordHash String
-  name         String?
-  role         UserRole @default(STUDENT)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  email              String   @unique @db.Citext
+  passwordHash       String
+  name               String?
+  role               UserRole @default(STUDENT)
+  stripeCustomerId   String?  @unique
+  subscriptionActive Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   passwordResetTokens       PasswordResetToken[]
   refreshTokens             RefreshToken[]
