@@ -7,9 +7,9 @@ import { apiPostAuth, handleApiError } from "@/lib/api";
 import { isValidEmail } from "@/lib/validation";
 import { Alert } from "@/components/auth/Alert";
 
+// Backend PR #32 @ 2231cfc contract
 type InviteResponse = {
   invite_url: string;
-  code?: string;
   expires_at: string;
 };
 
@@ -75,10 +75,11 @@ export default function InviteStudentPage() {
     setSubmitting(true);
 
     // P0 SEC (FRONTEND SECURITY CHECKER): POST /api/v1/invites
+    // Backend PR #32 @ 2231cfc - locked contract
     // - Bearer JWT required (professional only)
     // - Backend validates category against whitelist
     // - Backend generates opaque single-use hashed token with TTL
-    // - Returns invite_url with opaque token (no client IDs exposed)
+    // - Returns { invite_url, expires_at } (no code field)
     // - 1 active pro per category (backend enforces)
     const result = await apiPostAuth<InviteResponse>("/api/v1/invites", {
       student_email: email.trim().toLowerCase(),
@@ -89,8 +90,9 @@ export default function InviteStudentPage() {
 
     if (result.ok) {
       // P1 SEC (FRONTEND SECURITY CHECKER): Hash-based invite URL #token=
-      // Backend returns opaque token; frontend constructs full URL with hash
-      const token = result.data.code || result.data.invite_url.split('/').pop() || "";
+      // Backend returns full invite_url; extract token from it
+      // Format: frontend constructs /convite#token={token}
+      const token = result.data.invite_url.split('/').pop() || result.data.invite_url;
       const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
       const inviteUrl = `${baseUrl}/convite#token=${encodeURIComponent(token)}`;
       setInviteUrl(inviteUrl);

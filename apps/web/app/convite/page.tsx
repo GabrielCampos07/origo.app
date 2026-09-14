@@ -59,13 +59,14 @@ export default function InvitePage() {
 
     async function checkInvite() {
       // P1 SEC (FRONTEND SECURITY CHECKER): POST /api/v1/invites/validate with token in body
+      // Backend PR #32 @ 2231cfc - locked contract
       // - Token in JSON body (NOT URL path) to prevent access log leakage
-      // - Backend returns one of 4 states: valid / expired / used / error
+      // - Backend returns states: valid | expired | used | invalid
       // - "email_exists" is NOT exposed as distinct state (collapsed into generic error)
       // - No internal IDs leaked
       const result = await apiPost<{
         valid: boolean;
-        state: "valid" | "expired" | "used";
+        state: "valid" | "expired" | "used" | "invalid";
         professional_name?: string;
         category?: string;
       }>("/api/v1/invites/validate", { token: tokenValue });
@@ -82,6 +83,7 @@ export default function InvitePage() {
         } else if (result.data.state === "used") {
           setInviteState({ state: "used" });
         } else {
+          // invalid or any other state → generic error (no enumeration)
           setInviteState({ state: "error" });
         }
       } else {
