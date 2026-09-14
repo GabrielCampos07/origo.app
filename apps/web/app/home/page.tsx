@@ -625,7 +625,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div id="planos" className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto scroll-mt-24">
+        <div id="planos" className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto scroll-mt-28">
           <div className="plan-frame bg-white border border-[#d1e5d9] rounded-2xl p-8 flex flex-col gap-6 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)]">
             <div>
               <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Start</h3>
