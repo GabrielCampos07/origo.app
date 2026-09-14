@@ -73,11 +73,11 @@ export default function InvitePage() {
       }>("/api/v1/invites/validate", { token: tokenValue });
 
       if (result.ok) {
-        if (result.data.state === "valid" && result.data.professional_name && result.data.category) {
+        if (result.data.state === "valid") {
           setInviteState({
             state: "valid",
-            professional_name: result.data.professional_name,
-            category: result.data.category,
+            professional_name: result.data.professional_name || "",
+            category: result.data.category || "",
           });
         } else if (result.data.state === "expired") {
           setInviteState({ state: "expired" });
@@ -205,10 +205,13 @@ export default function InvitePage() {
                 </div>
                 <h2 className="mb-2 text-2xl font-semibold text-slate-900">Você foi convidado!</h2>
                 <p className="text-slate-600">
-                  {inviteState.professional_name} convidou você para se cadastrar. Cadastre-se com seus dados
-                  e comece a usar o beOrigo.
+                  {inviteState.professional_name 
+                    ? `${inviteState.professional_name} convidou você para se cadastrar. Cadastre-se com seus dados e comece a usar o beOrigo.`
+                    : "Convite válido. Cadastre-se com seus dados e comece a usar o beOrigo."}
                 </p>
-                <p className="mt-2 text-sm text-slate-500">Categoria: {inviteState.category}</p>
+                {inviteState.category && (
+                  <p className="mt-2 text-sm text-slate-500">Categoria: {inviteState.category}</p>
+                )}
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
