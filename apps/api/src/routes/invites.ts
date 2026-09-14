@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient, ProfessionalCategory } from '@prisma/client';
 import { generateSecureToken, hashToken } from '../lib/crypto';
 import { verifyAccessToken } from '../lib/jwt';
+import { sendInviteEmail } from '../lib/email';
 
 const prisma = new PrismaClient();
 
@@ -249,6 +250,24 @@ export async function inviteRoutes(fastify: FastifyInstance) {
             expiresAt,
           },
         });
+
+        // INFRA (best-effort email): Send invite email to student
+        // IMPORTANT: Email send failures do NOT fail the invite creation (soft-fail)
+        // - Resend domain (beorigo.app) may be unverified in production
+        // - SMTP errors logged but invite still returns 200 with invite_url
+        // - Invite token creation ALWAYS succeeds (professional can share link manually)
+        // SECURITY: student_email logged only on error (not success), never log inviteToken
+        try {
+          await sendInviteEmail(student_email, inviteToken);
+        } catch (emailError) {
+          // Log SMTP error (soft-fail - do NOT fail invite creation)
+          // SECURITY: Log minimal details (no token, email address partially redacted)
+          const emailDomain = student_email.split('@')[1];
+          fastify.log.warn(
+            { error: emailError, emailDomain },
+            'Invite email send failed (soft-fail, invite still created)'
+          );
+        }
 
         // SECURITY (Sec 1): Return opaque token once (never logged, never stored plaintext)
         // Frontend constructs: {origin}/convite#token={inviteToken}

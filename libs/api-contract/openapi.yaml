@@ -667,6 +667,12 @@ paths:
         - Category REMOVED from body (derived from ProfessionalProfile)
         - Front sends ONLY student_email (no category)
         
+        **Email Delivery (best-effort):**
+        - Invite email sent to student_email after token creation
+        - Email failures do NOT fail the request (still returns 200)
+        - Useful when SMTP domain is unverified or service unavailable
+        - Professional can share invite link manually if email fails
+        
         **Security (Bloco A Slice 1 - 7 LOCKED REQUIREMENTS):**
         1. Token hash-only at rest (SHA-256), never stores plaintext
         2. professionalUserId from JWT sub claim only (never client-supplied)
