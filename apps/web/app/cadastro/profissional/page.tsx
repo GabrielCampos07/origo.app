@@ -72,9 +72,9 @@ export default function ProfessionalSignupPage() {
     const result = await apiPost<RegisterProfessionalResponse>(
       "/api/v1/auth/register/professional",
       {
-        nome: nome.trim(),
+        name: nome.trim(),
         email: email.trim().toLowerCase(),
-        senha,
+        password: senha,
         category: categoria,
       }
     );

@@ -123,9 +123,9 @@ export default function InvitePage() {
     // - Returns JWT + student role
     const result = await apiPost<RegisterStudentResponse>("/api/v1/auth/register/student", {
       invite_token: token,
-      nome: nome.trim(),
+      name: nome.trim(),
       email: email.trim().toLowerCase(),
-      senha,
+      password: senha,
     });
 
     setSubmitting(false);
