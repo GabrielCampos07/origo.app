@@ -7,16 +7,19 @@
 
 ## Objective
 
-Update the backend create-invite flow so `category` is derived from the authenticated professional's `ProfessionalProfile` instead of being supplied in the request body.
+**OWNER LOCK (Gabriel) - Front #37 MERGED:**
+1. Update backend create-invite to derive `category` from ProfessionalProfile (NOT request body)
+2. Require `student_email` in request body (validated, NOT stored - no migration)
 
 ## Success Criteria ✅
 
 1. ✅ **POST /invites derives category from ProfessionalProfile** of JWT professional
-2. ✅ **OpenAPI body omits category** (no required fields)
-3. ✅ **DB still persists category** on invite/enrollment from pro profile
-4. ✅ **Sec notes** for light review added
-5. ✅ **PR opened** with clear OWNER lock cited + retest curl example
-6. ✅ **Exact paths/handlers reported** (see below)
+2. ✅ **OpenAPI body requires student_email** (validated, NOT stored - no migration)
+3. ✅ **OpenAPI body omits category** (derived from profile)
+4. ✅ **DB still persists category** on invite/enrollment from pro profile
+5. ✅ **Sec notes** for light review added
+6. ✅ **PR opened** with clear OWNER lock cited + retest curl example
+7. ✅ **Exact paths/handlers reported** (see below)
 
 ## Changes Made
 
@@ -25,13 +28,13 @@ Update the backend create-invite flow so `category` is derived from the authenti
 **Lines Modified**: 7-53, 90-215
 
 **Key Changes**:
-- **Line 46-51**: Updated `CreateInviteBody` interface to remove `category` field
+- **Line 58-63**: Updated `CreateInviteBody` interface - added `student_email`, removed `category`
 - **Line 17-20**: Updated security requirement #2 to document category derivation
-- **Line 46-53**: Added comprehensive security notes for BACKEND SECURITY CHECKER
-- **Line 103-120**: Updated endpoint documentation
-- **Line 133-136**: Added comment that category is no longer read from request body
-- **Line 175-184**: Added logic to derive category from `user.professionalProfile.category`
-- **Line 192-196**: Updated comment explaining category storage source
+- **Line 46-55**: Added comprehensive security notes for BACKEND SECURITY CHECKER
+- **Line 103-122**: Updated endpoint documentation (Front #37 merged)
+- **Line 135-157**: Added student_email validation (required, email format, NOT stored)
+- **Line 195-204**: Added logic to derive category from `user.professionalProfile.category`
+- **Line 212-216**: Updated comment explaining category storage source
 
 **Security Improvements**:
 - Eliminates client-side category manipulation vector
@@ -40,13 +43,13 @@ Update the backend create-invite flow so `category` is derived from the authenti
 
 ### 2. OpenAPI Contract (`libs/api-contract/openapi.yaml`)
 
-**Lines Modified**: 200-206, 656-674, 702-725
+**Lines Modified**: 200-213, 656-677, 702-710, 717-737
 
 **Key Changes**:
-- **Line 200-206**: Updated `CreateInviteRequest` schema to remove `category` property
-- **Line 656-674**: Updated POST /invites endpoint description
+- **Line 200-213**: Updated `CreateInviteRequest` schema - added required `student_email`, removed `category`
+- **Line 656-677**: Updated POST /invites endpoint description (Front #37 merged)
 - **Line 702-710**: Simplified 403 error (removed category mismatch example)
-- **Line 717-725**: Updated 422 error (only professional profile not found)
+- **Line 717-737**: Updated 422 error examples (added student_email validation errors)
 
 ### 3. Database Schema
 
@@ -56,18 +59,23 @@ Update the backend create-invite flow so `category` is derived from the authenti
 
 ### POST /api/v1/invites
 - **File**: `apps/api/src/routes/invites.ts`
-- **Handler Lines**: 113-215
-- **Key Logic**: Line 184 - `const category = user.professionalProfile.category;`
+- **Handler Lines**: 113-235
+- **Key Logic**: 
+  - Line 139: Extract `student_email` from body
+  - Lines 142-154: Validate student_email (required, format)
+  - Line 204: Derive category from profile
 
 **Flow**:
-1. Extract JWT → get `professionalUserId`
-2. Load user with `professionalProfile` relation
-3. Verify PROFESSIONAL role
-4. Verify profile exists (422 if not)
-5. **Derive category from profile** ← NEW
-6. Generate and hash invite token
-7. Store token with category from profile
-8. Return opaque token to client
+1. **Extract + validate student_email** ← NEW (Front #37)
+2. Validate email format (422 if invalid)
+3. Extract JWT → get `professionalUserId`
+4. Load user with `professionalProfile` relation
+5. Verify PROFESSIONAL role
+6. Verify profile exists (422 if not)
+7. **Derive category from profile** ← NEW
+8. Generate and hash invite token
+9. Store token with category from profile (student_email NOT stored)
+10. Return opaque token to client
 
 ## Testing
 
@@ -86,7 +94,9 @@ cd ../.. && npm run api:typecheck
 
 ### Manual Test Scenarios
 
-#### Scenario 1: Create invite with empty body (NEW)
+**OWNER UPDATE (Front #37 MERGED)**: Body now requires `student_email`
+
+#### Scenario 1: Create invite with student_email (CURRENT)
 ```bash
 # 1. Register professional
 curl -X POST http://localhost:3001/api/v1/auth/register/professional \
@@ -108,33 +118,42 @@ curl -X POST http://localhost:3001/api/v1/auth/login \
 
 # Extract access_token from response
 
-# 3. Create invite with EMPTY body
+# 3. Create invite with student_email
+curl -X POST http://localhost:3001/api/v1/invites \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"student_email": "maria@example.com"}'
+
+# Expected: 200 OK with invite_url and expires_at
+```
+
+#### Scenario 2: Missing student_email (422)
+```bash
 curl -X POST http://localhost:3001/api/v1/invites \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{}'
 
-# Expected: 200 OK with invite_url and expires_at
+# Expected: 422 with "student_email is required"
 ```
 
-#### Scenario 2: Legacy client sends category (should be IGNORED)
+#### Scenario 3: Invalid email format (422)
 ```bash
 curl -X POST http://localhost:3001/api/v1/invites \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{"category": "EDUCACAO_FISICA"}'
+  -d '{"student_email": "not-an-email"}'
 
-# Expected: 200 OK - category in body is IGNORED
-# Invite will have category from professional's profile (FISIOTERAPIA)
+# Expected: 422 with "Invalid email format"
 ```
 
-#### Scenario 3: Professional without profile (422)
+#### Scenario 4: Professional without profile (422)
 ```bash
 # If professional has no profile
 curl -X POST http://localhost:3001/api/v1/invites \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{}'
+  -d '{"student_email": "maria@example.com"}'
 
 # Expected: 422 with "Professional profile not found"
 ```
@@ -168,17 +187,19 @@ curl -X POST http://localhost:3001/api/v1/invites \
 
 ### Data Flow Verification
 
-**Before**:
+**Before (Original)**:
 ```
 Client → category in body → Validation (matches profile?) → InviteToken.category
 ```
 
-**After**:
+**After (Front #37 MERGED)**:
 ```
+Client → student_email in body → Validated (format only, NOT stored)
 JWT → ProfessionalProfile.category → InviteToken.category
 ```
 
-Category in request body (if sent) is **completely ignored** - not validated, not used.
+- `student_email`: validated but NOT stored (no InviteToken.studentEmail column - OWNER: no migration)
+- `category`: derived from profile, NOT from request body
 
 ## Constraints Met
 

@@ -47,18 +47,20 @@ const prisma = new PrismaClient();
  * - Category field REMOVED from POST /invites request body (OWNER lock: Gabriel)
  * - Category now derived EXCLUSIVELY from authenticated professional's ProfessionalProfile
  * - This eliminates client-side category manipulation vector
- * - Legacy clients: if body contains category, it is IGNORED (not validated, not used)
+ * - student_email field ADDED to request body (OWNER: Front #37 merged)
+ * - student_email validated (required, email format) but NOT stored (no InviteToken.studentEmail column)
+ * - OWNER: no migration. student_email validation only for frontend UX consistency.
  * - InviteToken.category and Enrollment.category still stored (from profile, not client)
- * - No DB schema changes in this commit (category columns remain)
- * - OpenAPI contract updated to omit category from CreateInviteRequest
+ * - No DB schema changes in this commit (category columns remain, no student email column added)
+ * - OpenAPI contract updated: CreateInviteRequest requires student_email, omits category
  */
 
 // OWNER lock (Gabriel) for Origo.app invite student flow:
-// Category field REMOVED from request body (no longer client-supplied).
-// Category now derived from authenticated professional's ProfessionalProfile only.
-// API contract (OpenAPI) omits category field from POST /invites body.
+// - Category REMOVED from request body (derived from ProfessionalProfile)
+// - student_email REQUIRED in request body (validated, NOT stored - no migration)
+// Front #37 MERGED: invite UI sends ONLY `student_email` (no category).
 interface CreateInviteBody {
-  // No fields required - category derived from JWT professional's profile
+  student_email: string; // Required: validated for email format, NOT stored (no InviteToken.studentEmail column)
 }
 
 interface ValidateInviteBody {
@@ -112,11 +114,12 @@ export async function inviteRoutes(fastify: FastifyInstance) {
    * - category derived from ProfessionalProfile only (Sec 2) - NEVER client-supplied
    * - Returns opaque token once; stores hash only (Sec 1)
    * 
-   * OWNER LOCK (Gabriel): Category REMOVED from request body.
-   * Category now derived from authenticated professional's ProfessionalProfile.
-   * Legacy clients that still send category in body: field is IGNORED (not validated).
+   * OWNER LOCK (Gabriel) - Front #37 MERGED:
+   * - Category REMOVED from request body (derived from ProfessionalProfile)
+   * - student_email REQUIRED in request body (validated, NOT stored - no migration)
+   * - Front sends ONLY `student_email` (no category)
    * 
-   * Body: {} (no required fields - category auto-derived)
+   * Body: { student_email: string }
    * Returns: { invite_url: string (token), expires_at: Date }
    */
   fastify.post<{ Body: CreateInviteBody }>(
@@ -130,9 +133,28 @@ export async function inviteRoutes(fastify: FastifyInstance) {
       },
     },
     async (request: FastifyRequest<{ Body: CreateInviteBody }>, reply: FastifyReply) => {
-      // OWNER LOCK (Gabriel): category NO LONGER read from request body.
-      // Category derived from ProfessionalProfile below (server-side only).
-      // Legacy clients may still send category in body - field is IGNORED.
+      // OWNER LOCK (Gabriel) - Front #37 MERGED:
+      // - student_email REQUIRED in body (validated, NOT stored - no migration)
+      // - category NO LONGER in body (derived from ProfessionalProfile)
+      const { student_email } = request.body;
+
+      // Validate student_email (required, email format)
+      if (!student_email || typeof student_email !== 'string') {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'student_email is required',
+        });
+      }
+
+      if (!isValidEmail(student_email)) {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'Invalid email format',
+        });
+      }
+
+      // NOTE: student_email validated but NOT stored (InviteToken has no studentEmail column)
+      // OWNER: no migration. Email validation only for frontend UX consistency.
 
       // Authentication check
       const authHeader = request.headers.authorization;

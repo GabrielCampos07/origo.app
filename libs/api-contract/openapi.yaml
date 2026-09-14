@@ -200,10 +200,18 @@ components:
     CreateInviteRequest:
       type: object
       description: |
-        OWNER LOCK (Gabriel): Category field REMOVED from request body.
-        Category is now derived from authenticated professional's ProfessionalProfile only.
-        No required fields - category is auto-derived server-side from JWT user's profile.
-      properties: {}
+        OWNER LOCK (Gabriel) - Front #37 MERGED:
+        - student_email REQUIRED (validated, NOT stored - no migration)
+        - Category field REMOVED (derived from ProfessionalProfile)
+        Front sends ONLY student_email (no category).
+      properties:
+        student_email:
+          type: string
+          format: email
+          description: Student email address (validated, NOT stored in InviteToken)
+          example: maria@example.com
+      required:
+        - student_email
 
     CreateInviteResponse:
       type: object
@@ -654,9 +662,10 @@ paths:
       description: |
         Creates an invite token for student enrollment (PROFESSIONAL only).
         
-        **OWNER LOCK (Gabriel): Category REMOVED from request body.**
-        Category is now derived from authenticated professional's ProfessionalProfile only.
-        Request body is empty - no required fields.
+        **OWNER LOCK (Gabriel) - Front #37 MERGED:**
+        - student_email REQUIRED in body (validated, NOT stored - no migration)
+        - Category REMOVED from body (derived from ProfessionalProfile)
+        - Front sends ONLY student_email (no category)
         
         **Security (Bloco A Slice 1 - 7 LOCKED REQUIREMENTS):**
         1. Token hash-only at rest (SHA-256), never stores plaintext
@@ -669,9 +678,9 @@ paths:
         
         **Product Rules:**
         - Only PROFESSIONAL users can create invites
+        - student_email validated (email format) but NOT stored (no InviteToken column)
         - category auto-derived from authenticated user's ProfessionalProfile.category
         - Token returned once in response (store securely on client)
-        - Legacy clients that send category in body: field is IGNORED
         
         **Rate limits:**
         - 10 requests/15min per authenticated user
@@ -715,14 +724,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '422':
-          description: Validation error (professional profile not found)
+          description: Validation error (missing student_email, invalid email, or professional profile not found)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Validation Error
-                message: Professional profile not found
+              examples:
+                missing_email:
+                  summary: Missing student_email
+                  value:
+                    error: Validation Error
+                    message: student_email is required
+                invalid_email:
+                  summary: Invalid email format
+                  value:
+                    error: Validation Error
+                    message: Invalid email format
+                no_profile:
+                  summary: Professional profile not found
+                  value:
+                    error: Validation Error
+                    message: Professional profile not found
         '429':
           description: Rate limit exceeded
           content:
