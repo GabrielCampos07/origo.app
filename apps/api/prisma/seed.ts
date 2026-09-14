@@ -42,7 +42,12 @@ async function main() {
   const demoTokenHash = hashToken(DEMO_INVITE_TOKEN);
   const demoInviteToken = await prisma.inviteToken.upsert({
     where: { tokenHash: demoTokenHash },
-    update: {},
+    update: {
+      usedAt: null,
+      professionalUserId: prof.id,
+      category: 'FISIOTERAPIA',
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+    },
     create: {
       tokenHash: demoTokenHash,
       professionalUserId: prof.id,
