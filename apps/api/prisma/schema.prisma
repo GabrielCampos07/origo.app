@@ -23,6 +23,21 @@ enum UserRole {
   STUDENT
 }
 
+// Professional category enum for Bloco A (MVP)
+// Defines professional specializations in Origo system
+enum ProfessionalCategory {
+  FISIOTERAPIA
+  EDUCACAO_FISICA
+  PERSONAL
+}
+
+// Enrollment status enum for Bloco A
+// Tracks student-professional enrollment lifecycle
+enum EnrollmentStatus {
+  ACTIVE
+  REVOKED
+}
+
 // P0 Auth Schema
 // Tokens armazenados APENAS como hash (SHA-256)
 // Purge D8: expired/used reset tokens devem ser removidos via job batch (cron diário recomendado)
@@ -30,16 +45,21 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique @db.Citext
   passwordHash String
+  name         String?
   role         UserRole @default(STUDENT)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  passwordResetTokens PasswordResetToken[]
-  refreshTokens       RefreshToken[]
-  legalAcceptances    LegalAcceptance[]
-  referralCode        ReferralCode?
-  referralsAsReferrer Referral[]       @relation("ReferralReferrer")
-  referralAsReferred  Referral?        @relation("ReferralReferred")
+  passwordResetTokens       PasswordResetToken[]
+  refreshTokens             RefreshToken[]
+  legalAcceptances          LegalAcceptance[]
+  referralCode              ReferralCode?
+  referralsAsReferrer       Referral[]             @relation("ReferralReferrer")
+  referralAsReferred        Referral?              @relation("ReferralReferred")
+  professionalProfile       ProfessionalProfile?
+  inviteTokensCreated       InviteToken[]
+  enrollmentsAsStudent      Enrollment[]           @relation("EnrollmentStudent")
+  enrollmentsAsProfessional Enrollment[]           @relation("EnrollmentProfessional")
 
   @@map("users")
 }
@@ -173,4 +193,72 @@ model ReferralPayout {
 
   @@index([referralId])
   @@map("referral_payouts")
+}
+
+// Bloco A: Professional Profile
+// DATABASE SECURITY NOTES:
+// - PURPOSE: Professional specialization tracking for enrollment system
+// - PII: userId (linked to User), category is classification metadata
+// - LEAST PRIVILEGE: api_app_role has SELECT+INSERT+UPDATE (no DELETE)
+// - CASCADE: Deletion via User CASCADE or compliance directive only
+model ProfessionalProfile {
+  id        String                @id @default(cuid())
+  userId    String                @unique
+  category  ProfessionalCategory
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("professional_profiles")
+}
+
+// Bloco A: Invite Token (hash-only, similar to PasswordResetToken)
+// DATABASE SECURITY NOTES:
+// - PURPOSE: Single-use enrollment invite tokens
+// - SECURITY: Store SHA-256 hash ONLY, never plaintext token
+// - SINGLE-USE: usedAt marks token as consumed (cannot be reused)
+// - PURGE: D8-style batch job should remove expired/used tokens
+// - PII: professionalUserId (linked to User creating invite)
+// - LEAST PRIVILEGE: api_app_role has SELECT+INSERT+UPDATE (no DELETE; purge elevated)
+model InviteToken {
+  id                   String                @id @default(cuid())
+  tokenHash            String                @unique
+  professionalUserId   String
+  category             ProfessionalCategory
+  expiresAt            DateTime
+  usedAt               DateTime?
+  createdAt            DateTime              @default(now())
+  professional         User                  @relation(fields: [professionalUserId], references: [id], onDelete: Cascade)
+
+  @@index([professionalUserId])
+  @@index([expiresAt])
+  @@map("invite_tokens")
+}
+
+// Bloco A: Enrollment (student-professional relationship)
+// DATABASE SECURITY NOTES:
+// - PURPOSE: Care relationship tracking (student enrolled with professional)
+// - PII: studentUserId + professionalUserId (linked to Users)
+// - DATA INTEGRITY: Partial unique index enforces ONE ACTIVE per (studentUserId, category)
+// - DATA INTEGRITY: CHECK constraint prevents self-enrollment (studentUserId <> professionalUserId)
+// - LIFECYCLE: ACTIVE → REVOKED (endedAt set); switch enrollment = REVOKED old + new ACTIVE
+// - LEAST PRIVILEGE: api_app_role has SELECT+INSERT+UPDATE (no DELETE)
+// - NO CLINICAL DATA: This table tracks relationship only, not session logs or HEP
+model Enrollment {
+  id                   String                @id @default(cuid())
+  studentUserId        String
+  professionalUserId   String
+  category             ProfessionalCategory
+  status               EnrollmentStatus      @default(ACTIVE)
+  startedAt            DateTime              @default(now())
+  endedAt              DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  student              User                  @relation("EnrollmentStudent", fields: [studentUserId], references: [id], onDelete: Cascade)
+  professional         User                  @relation("EnrollmentProfessional", fields: [professionalUserId], references: [id], onDelete: Cascade)
+
+  @@index([studentUserId])
+  @@index([professionalUserId])
+  @@index([category])
+  @@map("enrollments")
 }
