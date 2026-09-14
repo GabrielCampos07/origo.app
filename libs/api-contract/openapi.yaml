@@ -199,14 +199,11 @@ components:
 
     CreateInviteRequest:
       type: object
-      properties:
-        category:
-          type: string
-          enum: [FISIOTERAPIA, EDUCACAO_FISICA, PERSONAL]
-          description: Professional category (must match authenticated user's profile)
-          example: FISIOTERAPIA
-      required:
-        - category
+      description: |
+        OWNER LOCK (Gabriel): Category field REMOVED from request body.
+        Category is now derived from authenticated professional's ProfessionalProfile only.
+        No required fields - category is auto-derived server-side from JWT user's profile.
+      properties: {}
 
     CreateInviteResponse:
       type: object
@@ -657,6 +654,10 @@ paths:
       description: |
         Creates an invite token for student enrollment (PROFESSIONAL only).
         
+        **OWNER LOCK (Gabriel): Category REMOVED from request body.**
+        Category is now derived from authenticated professional's ProfessionalProfile only.
+        Request body is empty - no required fields.
+        
         **Security (Bloco A Slice 1 - 7 LOCKED REQUIREMENTS):**
         1. Token hash-only at rest (SHA-256), never stores plaintext
         2. professionalUserId from JWT sub claim only (never client-supplied)
@@ -664,12 +665,13 @@ paths:
         4. TTL 30 days (expiresAt)
         5. Single-use via usedAt field
         6. PROFESSIONAL-only (403 for STUDENT users)
-        7. category validated against ProfessionalProfile
+        7. category DERIVED from ProfessionalProfile (never client-supplied)
         
         **Product Rules:**
         - Only PROFESSIONAL users can create invites
-        - category must match authenticated user's ProfessionalProfile.category
+        - category auto-derived from authenticated user's ProfessionalProfile.category
         - Token returned once in response (store securely on client)
+        - Legacy clients that send category in body: field is IGNORED
         
         **Rate limits:**
         - 10 requests/15min per authenticated user
@@ -698,22 +700,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Forbidden (STUDENT user or category mismatch)
+          description: Forbidden (STUDENT user attempted to create invite)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              examples:
-                student_user:
-                  summary: Student user attempted to create invite
-                  value:
-                    error: Forbidden
-                    message: Only PROFESSIONAL users can create invites
-                category_mismatch:
-                  summary: Category doesn't match profile
-                  value:
-                    error: Validation Error
-                    message: Category must match your professional profile
+              example:
+                error: Forbidden
+                message: Only PROFESSIONAL users can create invites
         '404':
           description: User or professional profile not found
           content:
@@ -721,11 +715,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '422':
-          description: Validation error (invalid category)
+          description: Validation error (professional profile not found)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                error: Validation Error
+                message: Professional profile not found
         '429':
           description: Rate limit exceeded
           content:
