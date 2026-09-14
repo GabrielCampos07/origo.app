@@ -1,0 +1,39 @@
+# Dockerignore for repo root build context
+# Used by: fly deploy --config apps/api/fly.toml --dockerfile apps/api/Dockerfile
+
+# SECURITY: Prevent secrets from being copied into image
+.env
+**/.env
+.env.*
+**/.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+.github
+
+# Node
+node_modules
+**/node_modules
+
+# Build artifacts
+dist
+**/dist
+*.log
+**/*.log
+tsconfig.tsbuildinfo
+**/*.tsbuildinfo
+
+# Development
+*.md
+!apps/api/README.md
+deploy/
+docs/
+scripts/
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo

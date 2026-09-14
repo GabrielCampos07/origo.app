@@ -13,8 +13,8 @@ COPY package.json package-lock.json ./
 # Copy API workspace
 COPY apps/api ./apps/api
 
-# Copy libs if present (shared packages)
-COPY libs ./libs 2>/dev/null || true
+# Copy libs (shared packages)
+COPY libs ./libs
 
 # Install dependencies for @origo/api workspace
 RUN npm ci --workspace=@origo/api --include-workspace-root

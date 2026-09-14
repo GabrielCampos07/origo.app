@@ -34,8 +34,18 @@ const server = Fastify({
 
 async function start() {
   try {
+    // BACKEND SECURITY: CORS allowlist based on FRONTEND_URL
+    // Fail-closed if FRONTEND_URL not set in production
+    const frontendUrl = process.env.FRONTEND_URL;
+    
+    if (!frontendUrl && process.env.NODE_ENV === 'production') {
+      server.log.error('FRONTEND_URL not set in production - CORS will block all origins');
+      throw new Error('FRONTEND_URL must be set in production');
+    }
+
     await server.register(cors, {
-      origin: true,
+      origin: frontendUrl ? [frontendUrl] : false,
+      credentials: true,
     });
 
     // Global rate limiting (D4: protect against abuse)
