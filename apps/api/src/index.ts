@@ -243,6 +243,15 @@ async function start() {
           return;
         }
 
+        // SECURITY FIX: Attach authenticated user to request for route handlers
+        // This avoids redundant JWT verification and ensures consistency
+        // @ts-ignore - Adding custom property to request
+        request.authenticatedUser = {
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+        };
+
         // SECURITY: Determine required docs based on DB role (server-side calculation)
         // PROFESSIONAL: privacy + terms_app + terms_saas + payments_notice
         // STUDENT: privacy + terms_app
@@ -266,6 +275,7 @@ async function start() {
         // JWT verification failed or other error - let it pass through
         // Route handler will properly handle auth errors (returns 401)
         // SECURITY: Invalid JWT stays 401 (not 403)
+        fastify.log.warn(error, 'Legal acceptance middleware: JWT verification failed');
         return;
       }
     });

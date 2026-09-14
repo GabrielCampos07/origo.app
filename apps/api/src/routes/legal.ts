@@ -96,15 +96,19 @@ interface CheckMissingDocsResponse {
 }
 
 /**
- * Extract userId from Authorization header
- * 
- * SECURITY NOTE for BACKEND SECURITY CHECKER:
- * - MUST bind acceptances to authenticated userId from JWT
- * - NEVER allow accepting on behalf of another user
- * - Token tampering prevention via JWT signature verification
- * - Replay attack: acceptedAt timestamp is server-controlled (never from client)
+ * Extract userId from request
+ * SECURITY FIX: Prefer middleware-verified user to avoid redundant JWT verification
+ * Falls back to manual extraction if middleware didn't run (exempt routes)
  */
 function extractUserId(request: FastifyRequest): string | null {
+  // SECURITY FIX: Check if middleware already verified the user
+  // @ts-ignore - Custom property added by middleware
+  if (request.authenticatedUser?.userId) {
+    // @ts-ignore
+    return request.authenticatedUser.userId;
+  }
+
+  // Fallback: Manual extraction for exempt routes
   const authHeader = request.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
