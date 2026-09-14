@@ -29,8 +29,9 @@ export default function ProfessorDashboardPage() {
       return;
     }
 
-    // Role mismatch: redirect to correct dashboard
-    if (storedUser.role === "STUDENT") {
+    // P1 SEC (FRONTEND SECURITY CHECKER): Fail-closed - allowlist PROFESSIONAL only
+    // Deny all other roles explicitly
+    if (storedUser.role !== "PROFESSIONAL") {
       router.push("/dashboard/aluno");
       return;
     }
@@ -65,29 +66,111 @@ export default function ProfessorDashboardPage() {
           <span className="text-sm text-slate-600">{user?.email}</span>
         </div>
 
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-teal-100">
-            <svg
-              className="h-12 w-12 text-teal-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-              />
-            </svg>
-          </div>
-          <h2 className="mb-2 text-2xl font-semibold text-slate-900">
+        <div className="mb-8">
+          <h2 className="mb-4 text-2xl font-semibold text-slate-900">
             Dashboard do Professor
           </h2>
-          <p className="max-w-md text-slate-600">
-            Bem-vindo ao painel do professor. Em breve você terá acesso a todas
-            as funcionalidades para gerenciar suas turmas e atividades.
+          <p className="text-slate-600">
+            Bem-vindo ao seu painel. Gerencie alunos, sessões e planos.
           </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+          {/* 1. Convidar */}
+          <button
+            onClick={() => router.push("/alunos/convidar")}
+            className="flex flex-col items-start rounded-lg border border-teal-200 bg-teal-50 p-6 text-left transition-colors hover:bg-teal-100"
+          >
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-teal-600">
+              <svg
+                className="h-6 w-6 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                />
+              </svg>
+            </div>
+            <h3 className="mb-1 text-lg font-semibold text-slate-900">Convidar aluno</h3>
+            <p className="text-sm text-slate-600">Crie um link de convite para seu aluno.</p>
+          </button>
+
+          {/* 2. HEP (Slice 2 - stub for now) */}
+          <button
+            disabled
+            className="flex flex-col items-start rounded-lg border border-slate-200 bg-slate-50 p-6 text-left opacity-60 cursor-not-allowed"
+          >
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-200">
+              <svg
+                className="h-6 w-6 text-slate-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            </div>
+            <h3 className="mb-1 text-lg font-semibold text-slate-900">HEP</h3>
+            <p className="text-sm text-slate-600">Em breve - Gerenciar programas de exercícios.</p>
+          </button>
+
+          {/* 3. Planos */}
+          <button
+            onClick={() => router.push("/checkout")}
+            className="flex flex-col items-start rounded-lg border border-slate-200 bg-white p-6 text-left transition-colors hover:bg-slate-50"
+          >
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+              <svg
+                className="h-6 w-6 text-slate-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                />
+              </svg>
+            </div>
+            <h3 className="mb-1 text-lg font-semibold text-slate-900">Planos</h3>
+            <p className="text-sm text-slate-600">Assine ou gerencie sua assinatura.</p>
+          </button>
+
+          {/* 4. Indicação */}
+          <button
+            onClick={() => router.push("/dashboard/professor/indicacao")}
+            className="flex flex-col items-start rounded-lg border border-slate-200 bg-white p-6 text-left transition-colors hover:bg-slate-50"
+          >
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+              <svg
+                className="h-6 w-6 text-slate-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                />
+              </svg>
+            </div>
+            <h3 className="mb-1 text-lg font-semibold text-slate-900">Indicação</h3>
+            <p className="text-sm text-slate-600">Compartilhe e ganhe benefícios.</p>
+          </button>
         </div>
 
         <div className="mt-8 border-t border-slate-200 pt-6">
