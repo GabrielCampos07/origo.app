@@ -17,12 +17,14 @@ async function main() {
     update: { 
       role: 'PROFESSIONAL',
       name: 'Dr. João Silva',
+      subscriptionActive: true, // SECURITY SOFT 2: Demo users need active subscription for smoke tests
     },
     create: {
       email: 'prof@origo.dev',
       passwordHash: await hashPassword('OrigoDemoProf1!'),
       name: 'Dr. João Silva',
       role: 'PROFESSIONAL',
+      subscriptionActive: true, // SECURITY SOFT 2: Demo users need active subscription for smoke tests
     },
   });
   console.log('✅ Professor user:', prof.email, '- Name:', prof.name);

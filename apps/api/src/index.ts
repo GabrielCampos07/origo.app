@@ -298,8 +298,8 @@ async function start() {
 
       // Reuse authenticatedUser from payment gate middleware if available
       // @ts-ignore - Custom property added by payment gate middleware
-      let user = request.authenticatedUser ? await prisma.user.findUnique({
-        where: { id: (request.authenticatedUser as any).userId },
+      let user = (request as any).authenticatedUser ? await prisma.user.findUnique({
+        where: { id: ((request as any).authenticatedUser).userId },
         include: {
           legalAcceptances: {
             select: { docVersion: true },
@@ -346,31 +346,24 @@ async function start() {
         }
       }
 
-        // SECURITY: Determine required docs based on DB role (server-side calculation)
-        // PROFESSIONAL: privacy + terms_app + terms_saas + payments_notice
-        // STUDENT: privacy + terms_app
-        const requiredDocs = [
-          ...REQUIRED_DOCS_ALL_USERS,
-          ...(user.role === 'PROFESSIONAL' ? REQUIRED_DOCS_PROFESSIONAL : []),
-        ];
+      // SECURITY: Determine required docs based on DB role (server-side calculation)
+      // PROFESSIONAL: privacy + terms_app + terms_saas + payments_notice
+      // STUDENT: privacy + terms_app
+      const requiredDocs = [
+        ...REQUIRED_DOCS_ALL_USERS,
+        ...(user.role === 'PROFESSIONAL' ? REQUIRED_DOCS_PROFESSIONAL : []),
+      ];
 
-        // SECURITY: Calculate missing docs from DB acceptances (server-side)
-        const acceptedDocVersions = new Set(user.legalAcceptances.map(a => a.docVersion));
-        const missingDocVersions = requiredDocs.filter(doc => !acceptedDocVersions.has(doc));
+      // SECURITY: Calculate missing docs from DB acceptances (server-side)
+      const acceptedDocVersions = new Set(user.legalAcceptances.map(a => a.docVersion));
+      const missingDocVersions = requiredDocs.filter(doc => !acceptedDocVersions.has(doc));
 
-        // SECURITY: Return 403 (not 451) with missing_doc_versions calculated server-side
-        if (missingDocVersions.length > 0) {
-          return reply.code(403).send({
-            error: 'legal_acceptance_required',
-            missing_doc_versions: missingDocVersions,
-          });
-        }
-      } catch (error) {
-        // JWT verification failed or other error - let it pass through
-        // Route handler will properly handle auth errors (returns 401)
-        // SECURITY: Invalid JWT stays 401 (not 403)
-        server.log.warn(error, 'Legal acceptance middleware: JWT verification failed');
-        return;
+      // SECURITY: Return 403 (not 451) with missing_doc_versions calculated server-side
+      if (missingDocVersions.length > 0) {
+        return reply.code(403).send({
+          error: 'legal_acceptance_required',
+          missing_doc_versions: missingDocVersions,
+        });
       }
     });
     const port = parseInt(process.env.PORT || '3001', 10);

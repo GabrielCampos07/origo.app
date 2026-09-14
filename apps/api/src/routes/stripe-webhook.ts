@@ -263,18 +263,56 @@ export async function stripeWebhookRoutes(fastify: FastifyInstance) {
             return reply.code(200).send({ received: true, skipped: 'no_origo_user_id' });
           }
 
-          // PAYMENT GATE: Activate subscription for user
+          // SECURITY SOFT 1: Only activate if payment_status is paid or no_payment_required
+          if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
+            fastify.log.warn(
+              { session_id: session.id, payment_status: session.payment_status },
+              'Checkout session payment not confirmed - not activating subscription'
+            );
+            return reply.code(200).send({ received: true, skipped: 'payment_not_confirmed' });
+          }
+
+          // SECURITY SOFT 1: Verify session.customer matches User.stripeCustomerId (or set/link consistently)
+          const user = await prisma.user.findUnique({
+            where: { id: origoUserId },
+            select: { id: true, stripeCustomerId: true },
+          });
+
+          if (!user) {
+            fastify.log.error({ user_id: origoUserId, session_id: session.id }, 'User not found for checkout session');
+            return reply.code(200).send({ received: true, skipped: 'user_not_found' });
+          }
+
+          // If user has no stripeCustomerId, set it from session (link consistently)
+          // If user has stripeCustomerId, verify it matches session.customer (security check)
+          if (user.stripeCustomerId && user.stripeCustomerId !== session.customer) {
+            fastify.log.error(
+              { 
+                user_id: origoUserId, 
+                session_id: session.id, 
+                user_stripe_customer: user.stripeCustomerId,
+                session_customer: session.customer,
+              },
+              'SECURITY: session.customer mismatch - not activating subscription'
+            );
+            return reply.code(200).send({ received: true, skipped: 'customer_mismatch' });
+          }
+
+          // PAYMENT GATE: Activate subscription and link customer (fail-closed)
           await prisma.user.update({
             where: { id: origoUserId },
-            data: { subscriptionActive: true },
+            data: { 
+              subscriptionActive: true,
+              stripeCustomerId: session.customer as string, // Set/update customer link
+            },
           });
 
           fastify.log.info(
-            { user_id: origoUserId, session_id: session.id },
+            { user_id: origoUserId, session_id: session.id, payment_status: session.payment_status },
             'Subscription activated (checkout.session.completed)'
           );
 
-          return reply.code(200).send({ received: true, user_id: origoUserId, subscription_active: true });
+          return reply.code(200).send({ received: true });
         } catch (error) {
           fastify.log.error(error, 'Error processing checkout.session.completed webhook');
           return reply.code(500).send({
@@ -315,7 +353,7 @@ export async function stripeWebhookRoutes(fastify: FastifyInstance) {
             'Subscription deactivated (customer.subscription.deleted)'
           );
 
-          return reply.code(200).send({ received: true, user_id: origoUserId, subscription_active: false });
+          return reply.code(200).send({ received: true });
         } catch (error) {
           fastify.log.error(error, 'Error processing customer.subscription.deleted webhook');
           return reply.code(500).send({
@@ -365,12 +403,7 @@ export async function stripeWebhookRoutes(fastify: FastifyInstance) {
             'Subscription status updated (customer.subscription.updated)'
           );
 
-          return reply.code(200).send({
-            received: true,
-            user_id: origoUserId,
-            subscription_active: isActive,
-            stripe_status: subscription.status,
-          });
+          return reply.code(200).send({ received: true });
         } catch (error) {
           fastify.log.error(error, 'Error processing customer.subscription.updated webhook');
           return reply.code(500).send({
