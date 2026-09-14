@@ -18,14 +18,19 @@ const prisma = new PrismaClient();
  */
 
 /**
- * Extract userId from Authorization header
- * 
- * SECURITY NOTE:
- * - MUST bind operations to authenticated userId from JWT
- * - NEVER allow operations on behalf of another user
- * - Token tampering prevention via JWT signature verification
+ * Extract userId from request
+ * SECURITY FIX: Prefer middleware-verified user to avoid redundant JWT verification
+ * Falls back to manual extraction if middleware didn't run (exempt routes)
  */
 function extractUserId(request: FastifyRequest): string | null {
+  // SECURITY FIX: Check if middleware already verified the user
+  // @ts-ignore - Custom property added by middleware
+  if (request.authenticatedUser?.userId) {
+    // @ts-ignore
+    return request.authenticatedUser.userId;
+  }
+
+  // Fallback: Manual extraction for routes where middleware didn't run
   const authHeader = request.headers.authorization;
   
   if (!authHeader) {
