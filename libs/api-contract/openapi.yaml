@@ -250,6 +250,10 @@ components:
           enum: [FISIOTERAPIA, EDUCACAO_FISICA, PERSONAL]
           description: Professional category (only returned for valid invites)
           example: FISIOTERAPIA
+        professional_name:
+          type: string
+          description: Professional's name (User.name) - ONLY returned for valid invites. No email/id exposed.
+          example: Dr. João Silva
       required:
         - valid
         - state
@@ -742,14 +746,15 @@ paths:
           · Referer headers
           · Proxy logs
         - Generic states only: valid | expired | used | invalid
-        - No PII exposure (no professional name/email)
+        - Professional name (User.name) ONLY exposed for valid invites (not expired/used/invalid)
+        - No professional email or ID exposed
         - No distinction between "not found" and "invalid"
         - Returns category hint only for valid invites
         
         **Security (Bloco A Slice 1 - 7 LOCKED REQUIREMENTS):**
         1. Token hashed for lookup (SHA-256)
         2. Generic states only: valid | expired | used | invalid
-        3. No PII exposure (no professional name/email)
+        3. Minimal PII exposure: professional name (User.name) ONLY for valid invites
         4. No distinction between "not found" and "invalid"
         5. Returns category hint only for valid invites
         
@@ -782,6 +787,7 @@ paths:
                     valid: true
                     state: valid
                     category: FISIOTERAPIA
+                    professional_name: Dr. João Silva
                 expired:
                   summary: Expired invite
                   value:

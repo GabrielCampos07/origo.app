@@ -217,11 +217,14 @@ export async function inviteRoutes(fastify: FastifyInstance) {
    *   · Proxy logs
    * - Public endpoint (no auth required) (Sec 7)
    * - Returns only generic states: valid | expired | used | invalid (Sec 3)
-   * - No PII exposure (no professional name/email) (Sec 3)
+   * - PROFESSIONAL NAME EXPOSURE (VALID STATE ONLY):
+   *   · professional_name (User.name) included ONLY when state is valid
+   *   · No professional email, id, or other PII exposed
+   *   · No name on expired/used/invalid states (no enumeration)
    * - No distinction between "not found" and "invalid" (Sec 3)
    * 
    * Body: { token: string }
-   * Returns: { valid: boolean, state: 'valid' | 'expired' | 'used' | 'invalid', category?: string }
+   * Returns: { valid: boolean, state: 'valid' | 'expired' | 'used' | 'invalid', category?: string, professional_name?: string }
    */
   fastify.post<{ Body: ValidateInviteBody }>(
     '/api/v1/invites/validate',
@@ -254,6 +257,11 @@ export async function inviteRoutes(fastify: FastifyInstance) {
             expiresAt: true,
             usedAt: true,
             category: true,
+            professional: {
+              select: {
+                name: true,
+              },
+            },
           },
         });
 
@@ -280,11 +288,12 @@ export async function inviteRoutes(fastify: FastifyInstance) {
           });
         }
 
-        // SECURITY (Sec 3): Valid token - return minimal context (category hint only)
+        // SECURITY (Sec 3): Valid token - return minimal context (category hint + professional name only)
         return reply.code(200).send({
           valid: true,
           state: 'valid',
           category: inviteToken.category,
+          professional_name: inviteToken.professional.name || undefined,
         });
       } catch (error) {
         fastify.log.error(error, 'Validate invite error');
