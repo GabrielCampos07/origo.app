@@ -70,11 +70,12 @@ export default function ProfessorDashboardPage() {
             Dashboard do Professor
           </h2>
           <p className="text-slate-600">
-            Bem-vindo ao seu painel. Convide alunos e gerencie seu plano.
+            Bem-vindo ao seu painel. Gerencie alunos, sessões e planos.
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+          {/* 1. Convidar */}
           <button
             onClick={() => router.push("/alunos/convidar")}
             className="flex flex-col items-start rounded-lg border border-teal-200 bg-teal-50 p-6 text-left transition-colors hover:bg-teal-100"
@@ -90,7 +91,7 @@ export default function ProfessorDashboardPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M12 4v16m8-8H4"
+                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
                 />
               </svg>
             </div>
@@ -98,6 +99,31 @@ export default function ProfessorDashboardPage() {
             <p className="text-sm text-slate-600">Crie um link de convite para seu aluno.</p>
           </button>
 
+          {/* 2. HEP (Slice 2 - stub for now) */}
+          <button
+            disabled
+            className="flex flex-col items-start rounded-lg border border-slate-200 bg-slate-50 p-6 text-left opacity-60 cursor-not-allowed"
+          >
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-200">
+              <svg
+                className="h-6 w-6 text-slate-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            </div>
+            <h3 className="mb-1 text-lg font-semibold text-slate-900">HEP</h3>
+            <p className="text-sm text-slate-600">Em breve - Gerenciar programas de exercícios.</p>
+          </button>
+
+          {/* 3. Planos */}
           <button
             onClick={() => router.push("/checkout")}
             className="flex flex-col items-start rounded-lg border border-slate-200 bg-white p-6 text-left transition-colors hover:bg-slate-50"
@@ -117,8 +143,32 @@ export default function ProfessorDashboardPage() {
                 />
               </svg>
             </div>
-            <h3 className="mb-1 text-lg font-semibold text-slate-900">Ver planos</h3>
+            <h3 className="mb-1 text-lg font-semibold text-slate-900">Planos</h3>
             <p className="text-sm text-slate-600">Assine ou gerencie sua assinatura.</p>
+          </button>
+
+          {/* 4. Indicação */}
+          <button
+            onClick={() => router.push("/dashboard/professor/indicacao")}
+            className="flex flex-col items-start rounded-lg border border-slate-200 bg-white p-6 text-left transition-colors hover:bg-slate-50"
+          >
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+              <svg
+                className="h-6 w-6 text-slate-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                />
+              </svg>
+            </div>
+            <h3 className="mb-1 text-lg font-semibold text-slate-900">Indicação</h3>
+            <p className="text-sm text-slate-600">Compartilhe e ganhe benefícios.</p>
           </button>
         </div>
 

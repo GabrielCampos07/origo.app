@@ -70,14 +70,15 @@ export default function AlunoDashboardPage() {
             Dashboard do Aluno
           </h2>
           <p className="text-slate-600">
-            Bem-vindo ao seu painel de estudos. Acompanhe suas atividades e materiais.
+            Bem-vindo ao seu painel de estudos. Acompanhe suas sessões e atividades.
           </p>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 mx-auto">
+        {/* Começar sessão CTA */}
+        <div className="mb-6 rounded-lg border-2 border-teal-200 bg-gradient-to-br from-teal-50 to-white p-8 text-center">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-teal-600 mx-auto">
             <svg
-              className="h-8 w-8 text-blue-600"
+              className="h-8 w-8 text-white"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -86,14 +87,53 @@ export default function AlunoDashboardPage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
           </div>
-          <h3 className="mb-2 text-xl font-semibold text-slate-900">Seus profissionais</h3>
-          <p className="text-slate-600">
-            Você está vinculado aos profissionais que te convidaram. Em breve você verá suas sessões e atividades aqui.
+          <h3 className="mb-2 text-xl font-semibold text-slate-900">Sessão de hoje</h3>
+          <p className="mb-4 text-slate-600">
+            Inicie sua sessão quando estiver pronto. Seu profissional preparou atividades para você.
           </p>
+          <button
+            disabled
+            className="rounded-lg bg-teal-600 px-8 py-3 font-medium text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+          >
+            Começar sessão
+          </button>
+          <p className="mt-3 text-xs text-slate-500">Em breve - Aguarde liberação</p>
+        </div>
+
+        {/* Seus profissionais - Empty state */}
+        <div className="rounded-lg border border-slate-200 bg-white p-8">
+          <h3 className="mb-4 text-lg font-semibold text-slate-900">Seus profissionais</h3>
+          <div className="text-center py-8">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 mx-auto">
+              <svg
+                className="h-8 w-8 text-blue-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-3-3h-1m-2.663-3.118a4.001 4.001 0 010-5.764M12 18a3 3 0 100-6 3 3 0 000 6z"
+                />
+              </svg>
+            </div>
+            <h4 className="mb-2 text-base font-medium text-slate-900">Profissionais vinculados</h4>
+            <p className="text-sm text-slate-600 max-w-md mx-auto">
+              Você está vinculado aos profissionais que te convidaram. Em breve você verá a lista completa aqui.
+            </p>
+          </div>
         </div>
 
         <div className="mt-8 border-t border-slate-200 pt-6">
