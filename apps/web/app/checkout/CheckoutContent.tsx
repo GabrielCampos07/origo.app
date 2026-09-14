@@ -33,7 +33,7 @@ const PLANS: Record<PlanId, Plan> = {
       "Relatório de adesão",
       "Registro clínico mínimo",
     ],
-    cta: "Começar trial de 14 dias",
+    cta: "Assinar Start",
   },
   pro: {
     id: "pro",

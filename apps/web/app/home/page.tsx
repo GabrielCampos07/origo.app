@@ -611,7 +611,7 @@ export default function HomePage() {
 
       <SectionDivider tone="deep" surface="sage" />
 
-      <section id="planos" className="relative overflow-hidden bg-gradient-to-b from-[#e5f0e8] to-[#f5f5f0] px-6 md:px-20 py-20 flex flex-col gap-10 scroll-mt-24">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#e5f0e8] to-[#f5f5f0] px-6 md:px-20 py-20 flex flex-col gap-10">
         <div
           className="absolute inset-0 pointer-events-none select-none bg-[url('/assets/card-frame-leaves.png')] bg-center bg-[length:100%_100%] opacity-40 mix-blend-multiply"
           aria-hidden
@@ -625,19 +625,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="relative z-10 flex justify-center mb-6">
-          <div className="relative w-[min(400px,90vw)] h-[200px]">
-            <Image
-              src="/assets/pricing-illustration-1.png"
-              alt=""
-              fill
-              className="object-contain"
-              aria-hidden
-            />
-          </div>
-        </div>
-
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto">
+        <div id="planos" className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto scroll-mt-28">
           <div className="plan-frame bg-white border border-[#d1e5d9] rounded-2xl p-8 flex flex-col gap-6 shadow-[0px_10px_24px_-2px_rgba(46,56,51,0.1)]">
             <div>
               <h3 className="font-semibold text-2xl text-[var(--color-ink-900)] mb-2">Start</h3>
@@ -731,6 +719,18 @@ export default function HomePage() {
             >
               Assinar Clinic
             </FlowerButton>
+          </div>
+        </div>
+
+        <div className="relative z-10 flex justify-center mt-6">
+          <div className="relative w-[min(400px,90vw)] h-[200px]">
+            <Image
+              src="/assets/pricing-illustration-1.png"
+              alt=""
+              fill
+              className="object-contain"
+              aria-hidden
+            />
           </div>
         </div>
 
