@@ -228,8 +228,17 @@ export default function CheckoutContent() {
       return;
     }
     
+    if (result.kind === "payment_required") {
+      // P2 SEC: payment_required while on /checkout — stay on page, show inline error
+      // DO NOT redirect to /dashboard (would bounce user off checkout)
+      setCheckoutError(
+        result.message || "Pagamento pendente. Complete o checkout para ativar sua conta."
+      );
+      return;
+    }
+    
     if (result.status === 403) {
-      // 403 STUDENT role: redirect to dashboard
+      // 403 STUDENT role: redirect to dashboard (only after excluding payment_required)
       router.push("/dashboard");
       return;
     }
