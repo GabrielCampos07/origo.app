@@ -13,10 +13,12 @@ const prisma = new PrismaClient();
  *    - expiresAt enforces TTL (30 days default)
  *    - usedAt marks token as consumed (single-use)
  * 
- * 2. ZERO CLIENT-SUPPLIED userIds/professionalIds
+ * 2. ZERO CLIENT-SUPPLIED userIds/professionalIds/CATEGORY
  *    - professionalUserId derived from JWT sub claim only
  *    - studentUserId assigned server-side on registration
- *    - category validated against enum server-side
+ *    - category DERIVED FROM ProfessionalProfile (JWT user) - NEVER from request body
+ *    - OWNER LOCK (Gabriel): category removed from POST /invites request body
+ *    - Legacy clients that send category in body: field is IGNORED (not validated)
  * 
  * 3. GENERIC INVITE STATES (NO ENUMERATION)
  *    - GET /invites/:token returns only: valid | expired | used | invalid
@@ -40,10 +42,25 @@ const prisma = new PrismaClient();
  *    - POST /auth/register/student requires valid invite token
  *    - Token validated: exists, not expired, not used
  *    - Token marked as used atomically with enrollment creation
+ * 
+ * BACKEND SECURITY CHECKER (Sec light) - REVIEW NOTES:
+ * - Category field REMOVED from POST /invites request body (OWNER lock: Gabriel)
+ * - Category now derived EXCLUSIVELY from authenticated professional's ProfessionalProfile
+ * - This eliminates client-side category manipulation vector
+ * - student_email field ADDED to request body (OWNER: Front #37 merged)
+ * - student_email validated (required, email format) but NOT stored (no InviteToken.studentEmail column)
+ * - OWNER: no migration. student_email validation only for frontend UX consistency.
+ * - InviteToken.category and Enrollment.category still stored (from profile, not client)
+ * - No DB schema changes in this commit (category columns remain, no student email column added)
+ * - OpenAPI contract updated: CreateInviteRequest requires student_email, omits category
  */
 
+// OWNER lock (Gabriel) for Origo.app invite student flow:
+// - Category REMOVED from request body (derived from ProfessionalProfile)
+// - student_email REQUIRED in request body (validated, NOT stored - no migration)
+// Front #37 MERGED: invite UI sends ONLY `student_email` (no category).
 interface CreateInviteBody {
-  category: ProfessionalCategory;
+  student_email: string; // Required: validated for email format, NOT stored (no InviteToken.studentEmail column)
 }
 
 interface ValidateInviteBody {
@@ -94,10 +111,15 @@ export async function inviteRoutes(fastify: FastifyInstance) {
    * SECURITY:
    * - Requires valid JWT with PROFESSIONAL role (Sec 2, 6)
    * - professionalUserId from JWT sub claim only (Sec 2)
-   * - category validated against ProfessionalProfile (Sec 2)
+   * - category derived from ProfessionalProfile only (Sec 2) - NEVER client-supplied
    * - Returns opaque token once; stores hash only (Sec 1)
    * 
-   * Body: { category: ProfessionalCategory }
+   * OWNER LOCK (Gabriel) - Front #37 MERGED:
+   * - Category REMOVED from request body (derived from ProfessionalProfile)
+   * - student_email REQUIRED in request body (validated, NOT stored - no migration)
+   * - Front sends ONLY `student_email` (no category)
+   * 
+   * Body: { student_email: string }
    * Returns: { invite_url: string (token), expires_at: Date }
    */
   fastify.post<{ Body: CreateInviteBody }>(
@@ -111,7 +133,28 @@ export async function inviteRoutes(fastify: FastifyInstance) {
       },
     },
     async (request: FastifyRequest<{ Body: CreateInviteBody }>, reply: FastifyReply) => {
-      const { category } = request.body;
+      // OWNER LOCK (Gabriel) - Front #37 MERGED:
+      // - student_email REQUIRED in body (validated, NOT stored - no migration)
+      // - category NO LONGER in body (derived from ProfessionalProfile)
+      const { student_email } = request.body;
+
+      // Validate student_email (required, email format)
+      if (!student_email || typeof student_email !== 'string') {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'student_email is required',
+        });
+      }
+
+      if (!isValidEmail(student_email)) {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'Invalid email format',
+        });
+      }
+
+      // NOTE: student_email validated but NOT stored (InviteToken has no studentEmail column)
+      // OWNER: no migration. Email validation only for frontend UX consistency.
 
       // Authentication check
       const authHeader = request.headers.authorization;
@@ -151,15 +194,8 @@ export async function inviteRoutes(fastify: FastifyInstance) {
           });
         }
 
-        // Validate category against enum
-        if (!Object.values(ProfessionalCategory).includes(category)) {
-          return reply.code(422).send({
-            error: 'Validation Error',
-            message: 'Invalid category',
-          });
-        }
-
-        // SECURITY (Sec 2): Validate category matches professional profile
+        // SECURITY (Sec 2): Derive category from ProfessionalProfile (NEVER client-supplied)
+        // OWNER LOCK (Gabriel): This is the ONLY source of category for invite creation.
         if (!user.professionalProfile) {
           return reply.code(422).send({
             error: 'Validation Error',
@@ -167,12 +203,7 @@ export async function inviteRoutes(fastify: FastifyInstance) {
           });
         }
 
-        if (user.professionalProfile.category !== category) {
-          return reply.code(422).send({
-            error: 'Validation Error',
-            message: 'Category must match your professional profile',
-          });
-        }
+        const category = user.professionalProfile.category;
 
         // SECURITY (Sec 1): Generate secure token (≥128 bits entropy)
         // Returns plaintext token + SHA-256 hash
@@ -180,10 +211,11 @@ export async function inviteRoutes(fastify: FastifyInstance) {
         const expiresAt = getInviteTokenExpiry();
 
         // SECURITY (Sec 1): Store hash only (never plaintext)
+        // Category stored in InviteToken from professional's profile (for enrollment)
         await prisma.inviteToken.create({
           data: {
             professionalUserId,
-            category,
+            category, // Derived from ProfessionalProfile.category (server-side only)
             tokenHash,
             expiresAt,
           },
