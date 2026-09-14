@@ -4,6 +4,7 @@ export type ApiErrorKind =
   | "validation"
   | "unauthorized"
   | "legal_acceptance_required"
+  | "payment_required"
   | "rate_limit"
   | "gone"
   | "network"
@@ -20,11 +21,15 @@ export type ApiResult<T> =
     };
 
 /**
- * Handle API error result, including legal acceptance redirect.
+ * Handle API error result, including legal acceptance and payment redirects.
  * SEC: Backend PR #14 (a103f20) - protected routes return 403 with legal_acceptance_required.
- * Frontend must store missing_doc_versions and redirect to /legal/accept.
+ * SEC: Backend PR #53 - protected routes return 403 with payment_required.
+ * Frontend must store missing_doc_versions and redirect to /legal/accept or /checkout.
  * 
  * Call this in components after getting an API error result to handle redirects.
+ * 
+ * FRONTEND SECURITY NOTE: Client never authorizes; only reacts to server payment_required;
+ * redirect to /checkout only. Generic error without detail to prevent enumeration.
  */
 export function handleApiError<T>(result: ApiResult<T>): void {
   if (result.ok) return;
@@ -38,6 +43,14 @@ export function handleApiError<T>(result: ApiResult<T>): void {
       const currentPath = window.location.pathname + window.location.search;
       const returnUrl = encodeURIComponent(currentPath);
       window.location.href = `/legal/accept?return=${returnUrl}`;
+    }
+  }
+  
+  if (result.kind === "payment_required") {
+    // Redirect to /checkout - user must complete payment to access protected routes
+    // Backend PR #53: fail-closed payment gate for PROFESSIONAL users
+    if (typeof window !== "undefined") {
+      window.location.href = "/checkout";
     }
   }
 }
@@ -68,6 +81,15 @@ async function parseErrorMessage(res: Response): Promise<{
         message: body.message || "Aceitação de termos necessária",
         kind: "legal_acceptance_required",
         missing_doc_versions: body.missing_doc_versions,
+      };
+    }
+    
+    // SEC: Payment 403 gate — when backend returns 403 with payment_required,
+    // frontend must redirect to /checkout (Backend PR #53)
+    if (res.status === 403 && body.error === "payment_required") {
+      return {
+        message: body.message || "Pagamento pendente. Complete o checkout para ativar sua conta.",
+        kind: "payment_required",
       };
     }
     
