@@ -1,0 +1,55 @@
+# Fly.io deployment configuration for Origo API
+# Deploy from repo root: fly deploy --config apps/api/fly.toml --dockerfile apps/api/Dockerfile -a beorigo-api
+
+app = "beorigo-api"
+primary_region = "gru"
+
+[build]
+  # Dockerfile and build context paths are relative to repo root
+  dockerfile = "apps/api/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3001"
+  HOST = "0.0.0.0"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# SECURITY: No secrets in this file
+# Set secrets via: fly secrets set KEY=value -a beorigo-api
+#
+# Required secrets (from .env.example):
+# - DATABASE_URL=postgresql://user:pass@host:port/db
+# - JWT_SECRET=<generate with: openssl rand -base64 32>
+# - JWT_ACCESS_EXPIRES_IN=15m
+# - JWT_REFRESH_EXPIRES_IN=7d
+# - SMTP_HOST=<your SMTP host>
+# - SMTP_PORT=<your SMTP port>
+# - SMTP_FROM=<noreply@yourdomain.com>
+# - FRONTEND_URL=<https://your-production-frontend-url> (NOT localhost)
+# - STRIPE_SECRET_KEY=sk_live_your_live_key_here
+# - STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
+# - STRIPE_REFERRAL_COUPON_ID=<coupon_id or "create-on-fly">
+# - STRIPE_PRICE_START_MONTHLY=price_xxxxxxxxxxxxx
+# - STRIPE_PRICE_START_ANNUAL=price_xxxxxxxxxxxxx
+# - STRIPE_PRICE_PRO_MONTHLY=price_xxxxxxxxxxxxx
+# - STRIPE_PRICE_PRO_ANNUAL=price_xxxxxxxxxxxxx
+# - STRIPE_PRICE_CLINIC_MONTHLY=price_xxxxxxxxxxxxx
+# - STRIPE_PRICE_CLINIC_ANNUAL=price_xxxxxxxxxxxxx
