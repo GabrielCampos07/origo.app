@@ -340,7 +340,7 @@ ORDER BY table_name, privilege_type;
 ⚠️  **UPDATE on `users` is table-wide** — A aplicação DEVE enforçar regras de negócio para prevenir escalação não autorizada do campo `role` (ex: student → admin). Considere políticas RLS ou verificações de autorização em nível de aplicação antes de permitir updates no campo `role`.
 
 **Future Work:**
-- **DELETE on token tables:** Design atual tem D8 purge rodando como `api_app_role`. Alternativa: criar role dedicada `origo_cron` com DELETE-only em tokens, rodar jobs de purge como `origo_cron` ao invés de `api_app_role`.
+- **DELETE on token tables:** D8 purge requer role elevada (ex: `origo_cron`) com DELETE-only em tokens. Considere criar role dedicada `origo_cron` para jobs automatizados de purge, mantendo `api_app_role` sem privilégio DELETE.
 - **INSERT on users:** Quando signup for retomado, ou conceder INSERT a `api_app_role` ou criar `signup_role` separada com INSERT-only em `users`.
 
 **Contexto de Seed:**  
