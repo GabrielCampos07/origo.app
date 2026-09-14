@@ -7,6 +7,7 @@ import { legalRoutes, REQUIRED_DOCS_ALL_USERS, REQUIRED_DOCS_PROFESSIONAL } from
 import { referralRoutes } from './routes/referrals';
 import { stripeWebhookRoutes } from './routes/stripe-webhook';
 import { checkoutRoutes } from './routes/checkout';
+import { inviteRoutes } from './routes/invites';
 import { verifyAccessToken } from './lib/jwt';
 
 const prisma = new PrismaClient({
@@ -128,6 +129,12 @@ async function start() {
             login: 'POST /api/v1/auth/login',
             forgotPassword: 'POST /api/v1/auth/forgot-password',
             resetPassword: 'POST /api/v1/auth/reset-password',
+            registerProfessional: 'POST /api/v1/auth/register/professional',
+            registerStudent: 'POST /api/v1/auth/register/student',
+          },
+          invites: {
+            create: 'POST /api/v1/invites',
+            validate: 'GET /api/v1/invites/:token',
           },
           legal: {
             accept: 'POST /api/v1/legal/accept',
@@ -163,6 +170,9 @@ async function start() {
     // Register Stripe webhook routes (Referral MVP payouts)
     await server.register(stripeWebhookRoutes);
 
+    // Register invite routes (Bloco A Slice 1)
+    await server.register(inviteRoutes);
+
     // Legal acceptance enforcement middleware (403 if missing required docs)
     // BACKEND SECURITY: Criteria enforced
     // 1. Only after valid JWT - missing/invalid token stays 401 (not 403)
@@ -181,6 +191,8 @@ async function start() {
         '/api/v1/auth/login',
         '/api/v1/auth/forgot-password',
         '/api/v1/auth/reset-password',
+        '/api/v1/auth/register/professional',
+        '/api/v1/auth/register/student',
         '/api/v1/legal/accept',
         '/api/v1/legal/missing',
         '/api/v1/referrals/validate',
@@ -189,6 +201,11 @@ async function start() {
 
       // Extract path without query parameters (prevent bypass via ?foo=bar)
       const requestPath = request.url.split('?')[0];
+
+      // SECURITY: Also exempt GET /api/v1/invites/:token (public validate endpoint)
+      if (requestPath.startsWith('/api/v1/invites/')) {
+        return;
+      }
 
       // Skip enforcement for exempt routes
       if (exemptRoutes.includes(requestPath)) {
