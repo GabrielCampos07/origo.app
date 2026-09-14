@@ -8,6 +8,21 @@
 
 ---
 
+## ⚠️ OWNER/DB Directive — NO MIGRATION
+
+**ACKNOWLEDGED:** Per OWNER/DB directive, this implementation makes **NO database or Prisma schema changes**.
+
+**Category lock implemented at:**
+- ✅ OpenAPI contract layer (enum: `[FISIOTERAPIA, EDUCACAO_FISICA]`)
+- ✅ API handler layer (whitelist validation)
+
+**Unchanged:**
+- ✅ Prisma schema (`PERSONAL` kept in enum for historical data)
+- ✅ Database (no migrations created)
+- ✅ Seed code (already uses only `FISIOTERAPIA`)
+
+---
+
 ## Issue #1: 422 on POST /api/v1/auth/register/professional (Staging)
 
 ### Root Cause — CONFIRMED BY FRONTEND
@@ -104,7 +119,7 @@ category:
 
 #### 4. Prisma Schema (apps/api/prisma/schema.prisma)
 
-**NO CHANGE (by design):**
+**NO CHANGE (per OWNER/DB directive):**
 ```prisma
 enum ProfessionalCategory {
   FISIOTERAPIA
@@ -113,11 +128,13 @@ enum ProfessionalCategory {
 }
 ```
 
-**Rationale:**
-- Prisma enum kept intact to avoid destructive DB migration
+**Rationale (OWNER/DB ACK):**
+- **NO migration now** — Tip category lock at OpenAPI + handler only
+- Prisma/DB enum keeps `PERSONAL` if present
+- API layer rejects `PERSONAL` with generic 422
 - Existing rows with `PERSONAL` preserved (no data loss)
-- API layer enforces category lock (soft deprecation)
-- If historical data analysis shows zero `PERSONAL` rows, a future migration can safely remove it
+- Soft deprecation strategy (API layer enforcement)
+- Future migration possible if historical data shows zero `PERSONAL` rows
 
 ---
 
