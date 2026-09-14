@@ -8,6 +8,7 @@ on:
       - 'libs/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'fly.toml'
       - '.github/workflows/deploy-api.yml'
 
 jobs:
@@ -44,8 +45,6 @@ jobs:
       - name: Deploy to Fly.io
         run: |
           flyctl deploy \
-            --config apps/api/fly.toml \
-            --dockerfile apps/api/Dockerfile \
             --app beorigo-api \
             --remote-only \
             --strategy immediate

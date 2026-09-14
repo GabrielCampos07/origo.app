@@ -1,6 +1,4 @@
 # Fly.io deployment configuration for Origo API
-# NOTE: Root fly.toml is the source of truth for GitHub Actions auto-deploy
-# This file is kept in sync for local testing/reference
 # Deploy from repo root: fly deploy --app beorigo-api --remote-only
 
 app = "beorigo-api"
