@@ -173,6 +173,89 @@ async function start() {
     // Register invite routes (Bloco A Slice 1)
     await server.register(inviteRoutes);
 
+    // Payment gate enforcement middleware (403 if PROFESSIONAL without active subscription)
+    // BACKEND SECURITY: Fail-closed payment gate for PROFESSIONAL users
+    // 1. PROFESSIONAL users without subscriptionActive = true are blocked (403 payment_required)
+    // 2. STUDENT users bypass payment gate (not subject to payment requirement)
+    // 3. Allowlist exceptions (no gate): auth, legal, checkout, webhooks, health, public endpoints
+    // 4. Runs BEFORE legal middleware to fail fast on payment issues
+    // 5. User fetched once and attached to request for downstream use
+    server.addHook('onRequest', async (request, reply) => {
+      // Exception list: routes that should NOT be blocked by payment gate
+      const exemptRoutes = [
+        '/health',
+        '/api/v1',
+        '/api/v1/auth/login',
+        '/api/v1/auth/forgot-password',
+        '/api/v1/auth/reset-password',
+        '/api/v1/auth/register/professional',
+        '/api/v1/auth/register/student',
+        '/api/v1/legal/accept',
+        '/api/v1/legal/missing',
+        '/api/v1/checkout/session',
+        '/api/v1/referrals/validate',
+        '/api/v1/webhooks/stripe',
+        '/api/v1/invites/validate',
+      ];
+
+      const requestPath = request.url.split('?')[0];
+
+      // Skip enforcement for exempt routes
+      if (exemptRoutes.includes(requestPath)) {
+        return;
+      }
+
+      // Skip enforcement for non-authenticated requests (let auth middleware handle 401)
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return;
+      }
+
+      try {
+        // Extract userId from JWT
+        const token = authHeader.substring(7);
+        const payload = verifyAccessToken(token);
+        const userId = payload.userId;
+
+        // Fetch user with legalAcceptances for both middlewares
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          include: {
+            legalAcceptances: {
+              select: { docVersion: true },
+            },
+          },
+        });
+
+        if (!user) {
+          // User not found - let the route handler deal with it
+          return;
+        }
+
+        // Attach authenticated user to request for route handlers and legal middleware
+        // @ts-ignore - Adding custom property to request
+        request.authenticatedUser = {
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+          subscriptionActive: user.subscriptionActive,
+        };
+
+        // PAYMENT GATE: Block PROFESSIONAL users without active subscription
+        if (user.role === 'PROFESSIONAL' && !user.subscriptionActive) {
+          return reply.code(403).send({
+            error: 'payment_required',
+            message: 'Pagamento pendente. Complete o checkout para ativar sua conta.',
+          });
+        }
+      } catch (error) {
+        // JWT verification failed - let it pass through
+        // Route handler will properly handle auth errors (returns 401)
+        server.log.warn(error, 'Payment gate middleware: JWT verification failed');
+        return;
+      }
+    });
+
     // Legal acceptance enforcement middleware (403 if missing required docs)
     // BACKEND SECURITY: Criteria enforced
     // 1. Only after valid JWT - missing/invalid token stays 401 (not 403)
@@ -182,6 +265,7 @@ async function start() {
     // 5. No bypass via header/query; userId/role only from JWT+DB
     // 6. Uses 403 (not 451)
     // 7. Middleware SELECT only; accept stays createMany/skipDuplicates append-only
+    // 8. Reuses authenticatedUser from payment gate middleware if available
     server.addHook('onRequest', async (request, reply) => {
       // Exception list: routes that should NOT be blocked by legal acceptance
       // SECURITY: Use path only (not full URL) to prevent query parameter bypass
@@ -212,45 +296,55 @@ async function start() {
         return;
       }
 
-      // Skip enforcement for non-authenticated requests (let auth middleware handle 401)
-      // SECURITY: Invalid/missing token returns early → route handler sends 401 (not 403)
-      const authHeader = request.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return;
-      }
-
-      try {
-        // SECURITY: Extract userId from JWT (server-side, signature-verified)
-        // Never trust client headers/query params for userId or role
-        const token = authHeader.substring(7);
-        const payload = verifyAccessToken(token);
-        const userId = payload.userId;
-
-        // SECURITY: Fetch user role and acceptances from DB (SELECT only)
-        // Role from User.role enum (PROFESSIONAL | STUDENT)
-        // Never accept role from client
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          include: {
-            legalAcceptances: {
-              select: { docVersion: true },
-            },
+      // Reuse authenticatedUser from payment gate middleware if available
+      // @ts-ignore - Custom property added by payment gate middleware
+      let user = request.authenticatedUser ? await prisma.user.findUnique({
+        where: { id: (request.authenticatedUser as any).userId },
+        include: {
+          legalAcceptances: {
+            select: { docVersion: true },
           },
-        });
+        },
+      }) : null;
 
-        if (!user) {
-          // User not found - let the route handler deal with it (returns 404 or 401)
+      // If payment gate didn't run (exempt route or no auth), extract from JWT
+      if (!user) {
+        const authHeader = request.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
           return;
         }
 
-        // SECURITY FIX: Attach authenticated user to request for route handlers
-        // This avoids redundant JWT verification and ensures consistency
-        // @ts-ignore - Adding custom property to request
-        request.authenticatedUser = {
-          userId: user.id,
-          email: user.email,
-          role: user.role,
-        };
+        try {
+          const token = authHeader.substring(7);
+          const payload = verifyAccessToken(token);
+          const userId = payload.userId;
+
+          user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+              legalAcceptances: {
+                select: { docVersion: true },
+              },
+            },
+          });
+
+          if (!user) {
+            return;
+          }
+
+          // Attach authenticated user to request if not already done
+          // @ts-ignore - Adding custom property to request
+          request.authenticatedUser = {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+            subscriptionActive: user.subscriptionActive,
+          };
+        } catch (error) {
+          server.log.warn(error, 'Legal acceptance middleware: JWT verification failed');
+          return;
+        }
+      }
 
         // SECURITY: Determine required docs based on DB role (server-side calculation)
         // PROFESSIONAL: privacy + terms_app + terms_saas + payments_notice

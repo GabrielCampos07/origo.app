@@ -188,6 +188,13 @@ export async function createCheckoutSession(
     });
   }
 
+  // PAYMENT GATE (P0): Store stripeCustomerId in User table for payment status tracking
+  // This links the user to their Stripe customer for subscription verification
+  await prisma.user.update({
+    where: { id: userId },
+    data: { stripeCustomerId: customer.id },
+  });
+
   // Create Stripe checkout session with existing customer
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: 'subscription',
