@@ -1,0 +1,78 @@
+name: Deploy API to Fly.io
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - 'libs/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-api.yml'
+
+jobs:
+  deploy:
+    name: Deploy API to Fly.io
+    runs-on: ubuntu-latest
+    
+    # Fail fast if FLY_API_TOKEN is not set
+    # SETUP REQUIRED: Repository admin must add FLY_API_TOKEN secret
+    # Get token from: https://fly.io/user/personal_access_tokens
+    # Add at: https://github.com/${{ github.repository }}/settings/secrets/actions
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify FLY_API_TOKEN secret is set
+        run: |
+          if [ -z "${{ secrets.FLY_API_TOKEN }}" ]; then
+            echo "❌ ERROR: FLY_API_TOKEN secret is not set"
+            echo ""
+            echo "To set up auto-deployment:"
+            echo "1. Generate a Fly.io deploy token: https://fly.io/user/personal_access_tokens"
+            echo "2. Add it as a repository secret named 'FLY_API_TOKEN'"
+            echo "3. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo ""
+            exit 1
+          fi
+          echo "✓ FLY_API_TOKEN is configured"
+
+      - name: Setup Flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: |
+          flyctl deploy \
+            --config apps/api/fly.toml \
+            --dockerfile apps/api/Dockerfile \
+            --app beorigo-api \
+            --remote-only \
+            --strategy immediate
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Wait for deployment to stabilize
+        run: sleep 10
+
+      - name: Health check
+        run: |
+          echo "Checking API health at https://beorigo-api.fly.dev/health"
+          
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://beorigo-api.fly.dev/health)
+          
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✓ Health check passed (HTTP $HTTP_STATUS)"
+          else
+            echo "❌ Health check failed (HTTP $HTTP_STATUS)"
+            echo "API may be starting up or experiencing issues"
+            exit 1
+          fi
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "🚀 API successfully deployed to Fly.io"
+          echo "📍 Region: gru (São Paulo)"
+          echo "🔗 URL: https://beorigo-api.fly.dev"
+          echo "✅ Health check: PASSED"
