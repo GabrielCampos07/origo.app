@@ -8,6 +8,7 @@ import { storeAuthSession } from "@/lib/auth-storage";
 import { isValidEmail, isValidPassword, PASSWORD_MIN_LENGTH } from "@/lib/validation";
 import { Alert } from "@/components/auth/Alert";
 import { FormField } from "@/components/auth/FormField";
+import { SelectField } from "@/components/auth/SelectField";
 import { SubmitButton } from "@/components/auth/SubmitButton";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 
@@ -19,14 +20,8 @@ type RegisterProfessionalResponse = {
 };
 
 const CATEGORIES = [
-  { value: "fisioterapeuta", label: "Fisioterapeuta" },
-  { value: "psicologo", label: "Psicólogo" },
-  { value: "terapeuta-ocupacional", label: "Terapeuta Ocupacional" },
-  { value: "fonoaudiologo", label: "Fonoaudiólogo" },
-  { value: "educador-fisico", label: "Educador Físico" },
-  { value: "nutricionista", label: "Nutricionista" },
-  { value: "pedagogo", label: "Pedagogo" },
-  { value: "outro", label: "Outro" },
+  { value: "FISIOTERAPIA", label: "Fisioterapeuta" },
+  { value: "EDUCACAO_FISICA", label: "Educador físico" },
 ];
 
 export default function ProfessionalSignupPage() {
@@ -65,10 +60,13 @@ export default function ProfessionalSignupPage() {
     setLoading(true);
 
     // P0 SEC (FRONTEND SECURITY CHECKER): POST /api/v1/auth/register/professional
-    // - nome/email/senha/category sent as-is
-    // - Backend validates category against whitelist
+    // - Body keys in EN: name/email/password/category (not nome/senha/categoria)
+    // - Category values: FISIOTERAPIA | EDUCACAO_FISICA (OpenAPI enum, not kebab-case)
+    // - UI restricted to only these two options (no PERSONAL, no deprecated categories)
+    // - Backend validates category against OpenAPI enum whitelist
     // - Backend returns JWT + trial starts after legal acceptance
     // - No client-side ID generation or manipulation
+    // - 422 error messages sanitized to prevent enum value leakage
     const result = await apiPost<RegisterProfessionalResponse>(
       "/api/v1/auth/register/professional",
       {
@@ -100,7 +98,7 @@ export default function ProfessionalSignupPage() {
     }
 
     if (result.kind === "validation") {
-      setError(result.message || "Dados inválidos. Verifique e tente novamente.");
+      setError("Dados inválidos. Verifique as informações e tente novamente.");
       return;
     }
     if (result.kind === "network") {
@@ -161,29 +159,17 @@ export default function ProfessionalSignupPage() {
             error={fieldErrors.senha}
           />
 
-          <div>
-            <label htmlFor="categoria" className="mb-1 block text-sm font-medium text-slate-700">
-              Categoria
-            </label>
-            <select
-              id="categoria"
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-              disabled={loading}
-              required
-              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-slate-900 transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:cursor-not-allowed disabled:bg-slate-100"
-            >
-              <option value="">Fisioterapeuta / Educação Física / Psicólogo...</option>
-              {CATEGORIES.map((cat) => (
-                <option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.categoria ? (
-              <p className="mt-1 text-sm text-red-600">{fieldErrors.categoria}</p>
-            ) : null}
-          </div>
+          <SelectField
+            id="categoria"
+            label="Categoria"
+            value={categoria}
+            onChange={setCategoria}
+            options={CATEGORIES}
+            placeholder="Selecione sua categoria"
+            required
+            disabled={loading}
+            error={fieldErrors.categoria}
+          />
 
           <SubmitButton loading={loading}>Continuar</SubmitButton>
 
