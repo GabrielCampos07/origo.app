@@ -29,8 +29,9 @@ export default function AlunoDashboardPage() {
       return;
     }
 
-    // Role mismatch: redirect to correct dashboard
-    if (storedUser.role === "PROFESSIONAL") {
+    // P2 SEC (FRONTEND SECURITY CHECKER): Fail-closed - allowlist STUDENT only
+    // PROFESSIONAL/unknown roles must not see student dashboard CTAs
+    if (storedUser.role !== "STUDENT") {
       router.push("/dashboard/professor");
       return;
     }

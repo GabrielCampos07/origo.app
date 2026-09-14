@@ -89,12 +89,22 @@ export default function InviteStudentPage() {
     setSubmitting(false);
 
     if (result.ok) {
-      // P1 SEC (FRONTEND SECURITY CHECKER): Hash-based invite URL #token=
-      // Backend returns full invite_url; extract token from it
-      // Format: frontend constructs /convite#token={token}
-      const token = result.data.invite_url.split('/').pop() || result.data.invite_url;
-      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-      const inviteUrl = `${baseUrl}/convite#token=${encodeURIComponent(token)}`;
+      // P2 SEC (FRONTEND SECURITY CHECKER): Treat invite_url as OPAQUE value
+      // Do NOT parse path segments (no .split('/').pop())
+      // If full URL → use as-is for share link
+      // If bare token → build /convite#token= ourselves
+      const inviteUrlValue = result.data.invite_url;
+      let inviteUrl: string;
+      
+      if (inviteUrlValue.startsWith("http://") || inviteUrlValue.startsWith("https://")) {
+        // Full URL from backend → use as-is
+        inviteUrl = inviteUrlValue;
+      } else {
+        // Bare token from backend → build hash URL
+        const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+        inviteUrl = `${baseUrl}/convite#token=${encodeURIComponent(inviteUrlValue)}`;
+      }
+      
       setInviteUrl(inviteUrl);
       setEmail("");
       setCategoria("");
@@ -108,8 +118,10 @@ export default function InviteStudentPage() {
       setTimeout(() => router.push("/login"), 2000);
       return;
     }
+    // P2 SEC (FRONTEND SECURITY CHECKER): On 422 validation, do NOT show result.message
+    // May leak enumerable info (email exists, category invalid, etc) - generic only
     if (result.kind === "validation") {
-      setError(result.message || "Dados inválidos. Verifique e tente novamente.");
+      setError("Não foi possível criar o convite. Verifique os dados e tente novamente.");
       return;
     }
     if (result.kind === "network") {
