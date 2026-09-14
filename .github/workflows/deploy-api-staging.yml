@@ -36,7 +36,9 @@ jobs:
           echo "✓ FLY_API_TOKEN is configured"
 
       - name: Setup Flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
+        uses: superfly/flyctl-actions/setup-flyctl@v1
+        with:
+          version: '0.4.102'
 
       - name: Deploy to Fly.io staging
         run: |
