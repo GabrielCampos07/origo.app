@@ -749,7 +749,7 @@ export default function HomePage() {
             Planos
           </h2>
           <p className="font-normal text-lg text-[var(--color-ink-600)]">
-            Escolha o plano que se encaixa no seu atendimento. Trial de 14 dias · Desconto de <strong>−20% anual</strong> disponível.
+            Escolha o plano que se encaixa no seu atendimento. Desconto de <strong>−20% anual</strong> disponível. <strong>14 dias grátis apenas com cupom de indicação válido</strong>.
           </p>
         </div>
 
@@ -773,10 +773,8 @@ export default function HomePage() {
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>HEP ilimitado</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Relatório de adesão</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Registro clínico mínimo</span></li>
-              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Trial 14 dias</span></li>
             </ul>
             <div className="mt-auto flex flex-col gap-2">
-              <p className="text-xs text-center text-[var(--color-ink-500)]">Trial de 14 dias</p>
               <FlowerButton
                 asButton
                 className="w-full text-base px-5 py-3.5"
@@ -808,7 +806,6 @@ export default function HomePage() {
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Relatório de adesão avançado</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Registro clínico leve / mínimo</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Suporte prioritário</span></li>
-              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Trial 14 dias</span></li>
             </ul>
             <FlowerButton
               asButton
@@ -836,7 +833,6 @@ export default function HomePage() {
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Alunos ilimitados</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Dashboard de gestão</span></li>
               <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Suporte dedicado</span></li>
-              <li className="flex items-start gap-2"><span className="text-[var(--brand-primary)] mt-0.5">✓</span><span>Trial 14 dias</span></li>
             </ul>
             <FlowerButton
               asButton
@@ -887,7 +883,7 @@ export default function HomePage() {
               
               <p className="text-base text-[var(--color-ink-700)] mb-4 max-w-lg">
                 Compartilhe o beOrigo com outros profissionais e receba <strong>15% de comissão recorrente</strong> enquanto 
-                a assinatura estiver ativa. Seu indicado ganha <strong>1 mês grátis</strong>.
+                a assinatura estiver ativa. Seu indicado ganha <strong>14 dias grátis</strong>.
               </p>
               
               <ul className="text-sm text-[var(--color-ink-600)] space-y-2 mb-6 text-left max-w-md mx-auto md:mx-0">
@@ -897,7 +893,7 @@ export default function HomePage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[var(--brand-primary)] mt-0.5">✓</span>
-                  <span>1 mês grátis para o indicado</span>
+                  <span>14 dias grátis com cupom de indicação</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-[var(--brand-primary)] mt-0.5">✓</span>

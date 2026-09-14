@@ -106,7 +106,7 @@ export default function CheckoutSuccessContent() {
           </p>
 
           <p className="text-base text-[var(--color-ink-500)] mb-8">
-            Você receberá um e-mail de confirmação em breve. Seu período de teste de 14 dias já está ativo.
+            Você receberá um e-mail de confirmação em breve. Sua assinatura está ativa e você já pode começar a usar o beOrigo.
           </p>
 
           {/* Session ID (optional display for support reference) */}

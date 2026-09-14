@@ -53,7 +53,7 @@ export default function AvisoPagamentosPage() {
             <li><strong>Clinic:</strong> R$ 149/mês ou R$ 1.430,40/ano (−20%)</li>
           </ul>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed mt-3">
-            Todos os planos incluem <strong>trial de 14 dias</strong>.
+            Trial de 14 dias disponível <strong>apenas com cupom de indicação válido</strong>. Sem cupom de indicação, a cobrança inicia imediatamente.
           </p>
         </section>
 
@@ -73,9 +73,9 @@ export default function AvisoPagamentosPage() {
             Profissionais podem participar do programa de indicação do beOrigo. As comissões seguem as regras definidas nos <a href="/termos-saas" className="text-[var(--brand-primary)] underline hover:no-underline">Termos SaaS §15</a>:
           </p>
           <ul className="list-disc list-inside space-y-2 text-base text-[var(--color-ink-700)]">
-            <li><strong>Indicado:</strong> 1 mês grátis via cupom</li>
+            <li><strong>Indicado:</strong> 14 dias grátis via cupom</li>
             <li><strong>Indicador:</strong> 15% recorrente sobre o valor cobrado do indicado</li>
-            <li><strong>0% durante o período free</strong> (trial ou cupom de indicação) — sem comissão no grátis</li>
+            <li><strong>0% durante o período free</strong> (cupom de indicação) — sem comissão no grátis</li>
             <li>Comissão continua enquanto o indicado mantiver assinatura paga ativa</li>
           </ul>
           <p className="text-base text-[var(--color-ink-700)] leading-relaxed mt-4 mb-3">
