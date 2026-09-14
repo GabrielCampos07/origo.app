@@ -10,7 +10,9 @@
 
 ## Issue #1: 422 on POST /api/v1/auth/register/professional (Staging)
 
-### Root Cause
+### Root Cause — CONFIRMED BY FRONTEND
+
+**Frontend team confirmed:** The staging client was sending PT slug `"fisioterapeuta"` instead of the expected English enum `"FISIOTERAPIA"`.
 
 The 422 error occurs when the Frontend sends Portuguese category labels (e.g., `"fisioterapeuta"`, `"educador físico"`) instead of the expected English snake_case enum values.
 
@@ -19,7 +21,8 @@ The 422 error occurs when the Frontend sends Portuguese category labels (e.g., `
 - `EDUCACAO_FISICA`
 
 **Common Frontend mistakes:**
-- Sending PT slugs: `"fisioterapeuta"`, `"educador-fisico"`, `"educador físico"`
+- ✅ **CONFIRMED by Frontend:** Sending PT slug `"fisioterapeuta"` (staging bug)
+- Sending PT slugs: `"educador-fisico"`, `"educador físico"`
 - Sending empty string: `""`
 - Sending old enum value: `"PERSONAL"` (now removed)
 - Sending null or undefined
