@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiGet, apiPost } from "@/lib/api";
 import { storeAuthSession } from "@/lib/auth-storage";
-import { isValidPassword, PASSWORD_MIN_LENGTH } from "@/lib/validation";
+import { isValidEmail, isValidPassword, PASSWORD_MIN_LENGTH } from "@/lib/validation";
 import { Alert } from "@/components/auth/Alert";
 
 type InviteState =
@@ -29,9 +29,10 @@ export default function InvitePage() {
   const [inviteState, setInviteState] = useState<InviteState>({ state: "loading" });
   const [token, setToken] = useState<string | null>(null);
   const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<{ nome?: string; senha?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ nome?: string; email?: string; senha?: string }>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -98,6 +99,8 @@ export default function InvitePage() {
   function validate(): boolean {
     const next: Record<string, string> = {};
     if (!nome.trim()) next.nome = "Informe seu nome.";
+    if (!email.trim()) next.email = "Informe seu e-mail.";
+    else if (!isValidEmail(email)) next.email = "E-mail inválido.";
     if (!senha) next.senha = "Informe sua senha.";
     else if (!isValidPassword(senha))
       next.senha = `A senha deve ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres.`;
@@ -113,13 +116,15 @@ export default function InvitePage() {
     setSubmitting(true);
 
     // P1 SEC (FRONTEND SECURITY CHECKER): POST /api/v1/auth/register/student
-    // - Token + nome/senha only - NO professionalId/studentId in client payload
+    // Backend PR #32 Sec: MUST include real email field (user-entered)
+    // - Token + nome/email/senha - NO professionalId/studentId in client payload
     // - Backend validates token and creates enrollment ACTIVE
     // - Backend enforces 1 active pro per category
     // - Returns JWT + student role
     const result = await apiPost<RegisterStudentResponse>("/api/v1/auth/register/student", {
       invite_token: token,
       nome: nome.trim(),
+      email: email.trim().toLowerCase(),
       senha,
     });
 
@@ -226,6 +231,26 @@ export default function InvitePage() {
                   />
                   {fieldErrors.nome ? (
                     <p className="mt-1 text-sm text-red-600">{fieldErrors.nome}</p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
+                    E-mail
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={submitting}
+                    required
+                    placeholder="voce@exemplo.com"
+                    autoComplete="email"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-slate-900 transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  />
+                  {fieldErrors.email ? (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
                   ) : null}
                 </div>
 
