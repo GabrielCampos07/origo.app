@@ -5,6 +5,9 @@
 # Stage 1: Dependencies and build
 FROM node:20-alpine AS builder
 
+# Install build dependencies required for native modules (argon2)
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /app
 
 # Copy workspace root package files
@@ -25,6 +28,9 @@ RUN cd apps/api && npx prisma generate
 # Build API
 RUN npm run build --workspace=apps/api
 
+# Prune dev dependencies after build
+RUN npm prune --omit=dev --workspace=@origo/api --include-workspace-root
+
 # Stage 2: Production runtime
 FROM node:20-alpine AS runtime
 
@@ -36,13 +42,11 @@ COPY package.json package-lock.json ./
 # Copy API workspace package.json
 COPY apps/api/package.json ./apps/api/
 
-# Install production dependencies only
-RUN npm ci --workspace=@origo/api --omit=dev --include-workspace-root
+# Copy pruned node_modules from builder (includes argon2 native bindings)
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy Prisma schema and generated client from builder
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 # Copy built application
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
