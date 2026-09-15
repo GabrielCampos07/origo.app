@@ -14,3 +14,4 @@ apps/*/.env.local
 .tmp/
 .turbo/
 coverage/
+.vercel

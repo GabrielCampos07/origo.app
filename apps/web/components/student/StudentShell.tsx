@@ -3,13 +3,18 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { ShellSkeleton } from "@/components/ui/Skeleton";
+import { LogoutButton } from "@/components/ui/LogoutButton";
 import {
   clearAuthSession,
   getAccessToken,
   getMissingDocVersions,
   getStoredUser,
+  patchStoredUser,
   type OrigoUser,
 } from "@/lib/auth-storage";
+import { fetchStudentProgram } from "@/lib/hep";
+import { roleLabels } from "@/lib/role-labels";
 
 const NAV = [
   { href: "/dashboard/aluno", label: "Hoje" },
@@ -55,6 +60,15 @@ export function StudentShell({ children }: { children: ReactNode }) {
 
     setUser(storedUser);
     setLoading(false);
+
+    // Enrich category from enrollment when missing (copy labels).
+    if (!storedUser.category) {
+      void fetchStudentProgram().then((result) => {
+        if (!result.ok || !result.data?.category) return;
+        const next = patchStoredUser({ category: result.data.category });
+        if (next) setUser(next);
+      });
+    }
   }, [router]);
 
   function handleLogout() {
@@ -63,13 +77,10 @@ export function StudentShell({ children }: { children: ReactNode }) {
   }
 
   if (loading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-slate-600">Carregando...</div>
-      </div>
-    );
+    return <ShellSkeleton />;
   }
 
+  const labels = roleLabels(user.category);
   const inSession = pathname.startsWith("/dashboard/aluno/sessao");
 
   return (
@@ -82,22 +93,15 @@ export function StudentShell({ children }: { children: ReactNode }) {
                 beOrigo
               </Link>
               <span className="mt-1 block w-fit rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
-                Aluno
+                {labels.studentBadge}
               </span>
             </div>
             <div className="flex flex-col items-end gap-2">
-              <span className="text-sm text-slate-600">{user.email}</span>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="text-sm text-teal-700 hover:text-teal-900"
-              >
-                Sair
-              </button>
+              <LogoutButton email={user.email} onLogout={handleLogout} />
             </div>
           </div>
 
-          <nav className="mt-6 flex gap-1 rounded-lg bg-slate-100 p-1" aria-label="Área do aluno">
+          <nav className="mt-6 flex gap-1 rounded-lg bg-slate-100 p-1" aria-label={`Área do ${labels.studentSingular}`}>
             {NAV.map((item) => {
               const active = navActive(pathname, item.href);
               return (

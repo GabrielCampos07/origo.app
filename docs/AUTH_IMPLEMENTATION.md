@@ -40,7 +40,7 @@ This implementation provides production-ready authentication endpoints for the O
 
 ```bash
 # Required
-DATABASE_URL=postgresql://origo:origo_dev_password@localhost:5435/origo_dev
+DATABASE_URL=postgresql://origo:origo_dev_password@localhost:5437/origo_dev
 JWT_SECRET=change_me_in_production_use_secure_random_string
 
 # Optional (with defaults)
@@ -94,7 +94,7 @@ When viewing raw email in Mailhog, quoted-printable encoding may display `=3D` i
 
 Local setup ports:
 - API: http://localhost:3001
-- Postgres: localhost:5435
+- Postgres: localhost:5437
 - Mailhog Web UI: http://localhost:8025
 - Mailhog SMTP: localhost:1025
 

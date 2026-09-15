@@ -6,6 +6,7 @@ import { getAccessToken, getStoredUser, clearAuthSession } from "@/lib/auth-stor
 import { apiPostAuth, handleApiError } from "@/lib/api";
 import { isValidEmail } from "@/lib/validation";
 import { Alert } from "@/components/auth/Alert";
+import { LogoutButton } from "@/components/ui/LogoutButton";
 
 // Backend PR #32 @ 2231cfc contract
 type InviteResponse = {
@@ -139,7 +140,7 @@ export default function InviteStudentPage() {
               Professor
             </span>
           </div>
-          <span className="text-sm text-slate-600">{user?.email}</span>
+          <LogoutButton email={user?.email} onLogout={handleLogout} />
         </div>
 
         <div className="mb-6">
@@ -231,9 +232,6 @@ export default function InviteStudentPage() {
               Ver alunos
             </button>
           </div>
-          <button onClick={handleLogout} className="text-sm text-slate-600 hover:text-slate-900">
-            Sair
-          </button>
         </div>
       </div>
     </div>

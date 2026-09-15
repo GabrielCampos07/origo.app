@@ -1,13 +1,63 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { login } from "../../lib/api";
-import { storeAuthSession } from "../../lib/auth-storage";
+import { storeAuthSession, type OrigoUser } from "../../lib/auth-storage";
+import { isLocalDevHost } from "../../lib/is-local-dev";
 import { isValidEmail } from "../../lib/validation";
 import { AuthLayout } from "../../components/auth/AuthLayout";
 import { Alert } from "../../components/auth/Alert";
+
+type DemoAccount = {
+  label: string;
+  email: string;
+  role: "PROFESSIONAL" | "STUDENT";
+  category: "FISIOTERAPIA" | "EDUCACAO_FISICA";
+  /** Env key for password — values live in apps/web/.env.local (not committed). */
+  passwordEnv:
+    | "NEXT_PUBLIC_DEMO_PROF_PASSWORD"
+    | "NEXT_PUBLIC_DEMO_ALUNO_PASSWORD"
+    | "NEXT_PUBLIC_DEMO_EDUCADOR_PASSWORD"
+    | "NEXT_PUBLIC_DEMO_ALUNO_EDUCADOR_PASSWORD";
+};
+
+const DEMO_ACCOUNTS: DemoAccount[] = [
+  {
+    label: "Fisioterapeuta",
+    email: "prof@origo.dev",
+    role: "PROFESSIONAL",
+    category: "FISIOTERAPIA",
+    passwordEnv: "NEXT_PUBLIC_DEMO_PROF_PASSWORD",
+  },
+  {
+    label: "Paciente (do fisioterapeuta)",
+    email: "aluno@origo.dev",
+    role: "STUDENT",
+    category: "FISIOTERAPIA",
+    passwordEnv: "NEXT_PUBLIC_DEMO_ALUNO_PASSWORD",
+  },
+  {
+    label: "Profissional de Educação Física",
+    email: "educador@origo.dev",
+    role: "PROFESSIONAL",
+    category: "EDUCACAO_FISICA",
+    passwordEnv: "NEXT_PUBLIC_DEMO_EDUCADOR_PASSWORD",
+  },
+  {
+    label: "Aluno (do educador)",
+    email: "aluno.educador@origo.dev",
+    role: "STUDENT",
+    category: "EDUCACAO_FISICA",
+    passwordEnv: "NEXT_PUBLIC_DEMO_ALUNO_EDUCADOR_PASSWORD",
+  },
+];
+
+function demoPasswordFromEnv(envKey: DemoAccount["passwordEnv"]): string {
+  const value = process.env[envKey];
+  return typeof value === "string" ? value : "";
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,19 +66,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+  const [showQuickLogin, setShowQuickLogin] = useState(false);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    const next: typeof fieldErrors = {};
-    if (!isValidEmail(email.trim().toLowerCase())) next.email = "Informe um e-mail válido";
-    if (!password) next.password = "Informe a senha";
-    setFieldErrors(next);
-    if (Object.keys(next).length) return;
+  useEffect(() => {
+    setShowQuickLogin(isLocalDevHost());
+  }, []);
 
+  async function completeLogin(normalized: string, passwordValue: string) {
     setLoading(true);
-    const normalized = email.trim().toLowerCase();
-    const res = await login(normalized, password);
+    setError(null);
+    const res = await login(normalized, passwordValue);
     setLoading(false);
     if (!res.ok) {
       if (res.kind === "unauthorized") setError("E-mail ou senha inválidos");
@@ -39,17 +86,25 @@ export default function LoginPage() {
       return;
     }
 
+    const demo = DEMO_ACCOUNTS.find((account) => account.email === normalized);
+
     // DEMO stub: if role missing, map seed emails
-    let user = res.data.user;
+    let user: OrigoUser = { ...res.data.user };
     if (!user.role) {
-      if (normalized === "prof@origo.dev") {
+      if (demo) {
+        user = { ...user, role: demo.role };
+      } else if (normalized === "prof@origo.dev") {
         user = { ...user, role: "PROFESSIONAL" };
-      } else if (normalized === "aluno@origo.dev") {
+      } else if (normalized === "aluno@origo.dev" || normalized === "aluno.educador@origo.dev") {
         user = { ...user, role: "STUDENT" };
+      } else if (normalized === "educador@origo.dev") {
+        user = { ...user, role: "PROFESSIONAL" };
       }
     }
+    if (demo?.category) {
+      user = { ...user, category: demo.category };
+    }
 
-    // Store auth session with role and missing docs
     storeAuthSession({
       access_token: res.data.access_token,
       refresh_token: res.data.refresh_token,
@@ -57,19 +112,43 @@ export default function LoginPage() {
       missing_doc_versions: res.data.missing_doc_versions,
     });
 
-    // Redirect based on missing docs and role
     if (res.data.missing_doc_versions && res.data.missing_doc_versions.length > 0) {
       router.push("/legal/accept");
+    } else if (user.role === "PROFESSIONAL") {
+      router.push("/dashboard/professor");
+    } else if (user.role === "STUDENT") {
+      router.push("/dashboard/aluno");
     } else {
-      // Redirect to role-specific dashboard
-      if (user.role === "PROFESSIONAL") {
-        router.push("/dashboard/professor");
-      } else if (user.role === "STUDENT") {
-        router.push("/dashboard/aluno");
-      } else {
-        router.push("/dashboard");
-      }
+      router.push("/dashboard");
     }
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const next: typeof fieldErrors = {};
+    if (!isValidEmail(email.trim().toLowerCase())) next.email = "Informe um e-mail válido";
+    if (!password) next.password = "Informe a senha";
+    setFieldErrors(next);
+    if (Object.keys(next).length) return;
+
+    const normalized = email.trim().toLowerCase();
+    await completeLogin(normalized, password);
+  }
+
+  async function onQuickLogin(account: DemoAccount) {
+    if (!isLocalDevHost()) return;
+    const demoPassword = demoPasswordFromEnv(account.passwordEnv);
+    if (!demoPassword) {
+      setError(
+        `Login rápido: defina ${account.passwordEnv} em apps/web/.env.local (veja .env.local.example / DEMO_LOCAL.md)`,
+      );
+      return;
+    }
+    setEmail(account.email);
+    setPassword(demoPassword);
+    setFieldErrors({});
+    await completeLogin(account.email, demoPassword);
   }
 
   return (
@@ -111,6 +190,28 @@ export default function LoginPage() {
           <Link href="/forgot-password">Esqueci minha senha</Link>
         </p>
       </form>
+
+      {showQuickLogin ? (
+        <div className="mt-6 border-t border-dashed border-slate-200 pt-5">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+            Dev local — login rápido
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {DEMO_ACCOUNTS.map((account) => (
+              <button
+                key={account.email}
+                type="button"
+                disabled={loading}
+                onClick={() => void onQuickLogin(account)}
+                title={account.email}
+                className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-medium text-teal-900 transition-colors hover:bg-teal-100 disabled:opacity-60"
+              >
+                {account.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </AuthLayout>
   );
 }

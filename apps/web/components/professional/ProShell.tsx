@@ -2,7 +2,10 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { ShellSkeleton } from "@/components/ui/Skeleton";
+import { LogoutButton } from "@/components/ui/LogoutButton";
 import { useProfessionalAuth } from "@/lib/use-professional-auth";
+import { roleLabels } from "@/lib/role-labels";
 
 type Props = {
   title: string;
@@ -11,6 +14,8 @@ type Props = {
   backLabel?: string;
   actions?: ReactNode;
   children: ReactNode;
+  /** Override category for copy; defaults to stored user category. */
+  category?: string | null;
 };
 
 export function ProShell({
@@ -20,15 +25,13 @@ export function ProShell({
   backLabel = "Voltar",
   actions,
   children,
+  category,
 }: Props) {
   const { loading, user, handleLogout } = useProfessionalAuth();
+  const labels = roleLabels(category ?? user?.category);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-slate-600">Carregando...</div>
-      </div>
-    );
+    return <ShellSkeleton />;
   }
 
   return (
@@ -40,17 +43,14 @@ export function ProShell({
               beOrigo
             </Link>
             <span className="ml-2 inline-block rounded-full bg-teal-100 px-3 py-1 text-xs font-medium text-teal-800">
-              Professor
+              {labels.professionalBadge}
             </span>
           </div>
           <div className="flex items-center gap-4 text-sm">
             <Link href="/alunos" className="text-teal-700 hover:text-teal-900">
-              Alunos
+              {labels.rosterTitle}
             </Link>
-            <span className="text-slate-600">{user?.email}</span>
-            <button type="button" onClick={handleLogout} className="text-slate-500 hover:text-slate-800">
-              Sair
-            </button>
+            <LogoutButton email={user?.email} onLogout={handleLogout} />
           </div>
         </div>
 
@@ -77,9 +77,5 @@ export function ProShell({
 }
 
 export function ProLoading() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <div className="text-slate-600">Carregando...</div>
-    </div>
-  );
+  return <ShellSkeleton />;
 }

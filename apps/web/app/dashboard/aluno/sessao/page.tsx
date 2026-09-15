@@ -106,7 +106,7 @@ export default function AlunoSessaoPage() {
     router.push(`/dashboard/aluno/sessao/feedback?session=${encodeURIComponent(session.id)}`);
   }
 
-  if (loading) return <LoadingPanel label="Preparando sua sessão..." />;
+  if (loading) return <LoadingPanel label="Preparando sua sessão..." variant="session" />;
   if (error) return <ErrorPanel message={error} onRetry={() => void load()} />;
 
   if (!session) {

@@ -1,20 +1,61 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient, ProfessionalCategory } from '@prisma/client';
 import { requireStudent } from '../lib/authz';
 import {
   adherencePercent,
   countCompletedThisWeek,
   parseOptionalPainLevel,
+  parseOptionalPatientNote,
   serializeExercise,
   startOfIsoWeekUtc,
   weeksAgoUtc,
 } from '../lib/hep';
 
+const exerciseInclude = {
+  catalogItem: {
+    select: {
+      videoUrl: true,
+      thumbnailUrl: true,
+      cuesPt: true,
+    },
+  },
+  professionalExercise: {
+    select: {
+      videoUrl: true,
+      photoUrls: true,
+      cuesPt: true,
+    },
+  },
+} as const;
+
 const prisma = new PrismaClient();
 
-async function loadActiveStudentContext(studentId: string) {
-  const enrollment = await prisma.enrollment.findFirst({
-    where: { studentUserId: studentId, status: 'ACTIVE' },
+const PROFESSIONAL_CATEGORIES = new Set<string>(['FISIOTERAPIA', 'EDUCACAO_FISICA']);
+
+function parseCategoryQuery(query: unknown): ProfessionalCategory | undefined {
+  if (!query || typeof query !== 'object') return undefined;
+  const raw = (query as { category?: unknown }).category;
+  if (typeof raw !== 'string') return undefined;
+  const normalized = raw.trim().toUpperCase();
+  if (!PROFESSIONAL_CATEGORIES.has(normalized)) return undefined;
+  return normalized as ProfessionalCategory;
+}
+
+function isPrismaUniqueConflict(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+}
+
+async function loadActiveStudentContext(
+  studentId: string,
+  category?: ProfessionalCategory
+) {
+  const enrollments = await prisma.enrollment.findMany({
+    where: {
+      studentUserId: studentId,
+      status: 'ACTIVE',
+      ...(category ? { category } : {}),
+    },
+    orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
     include: {
       professional: { select: { id: true, name: true } },
       programs: {
@@ -23,6 +64,7 @@ async function loadActiveStudentContext(studentId: string) {
           exercises: {
             where: { removedAt: null },
             orderBy: { orderIndex: 'asc' },
+            include: exerciseInclude,
           },
           sessions: {
             orderBy: { startedAt: 'desc' },
@@ -32,10 +74,13 @@ async function loadActiveStudentContext(studentId: string) {
     },
   });
 
-  if (!enrollment) {
+  if (enrollments.length === 0) {
     return null;
   }
 
+  // Prefer an enrollment that already has an ACTIVE program; otherwise first by orderBy.
+  const enrollment =
+    enrollments.find((row) => row.programs.length > 0) ?? enrollments[0];
   const program = enrollment.programs[0] ?? null;
   return { enrollment, program };
 }
@@ -47,6 +92,7 @@ function serializeSession(
     startedAt: Date;
     completedAt: Date | null;
     painLevel: number | null;
+    patientNote?: string | null;
   },
   completedExerciseIds: string[] = []
 ) {
@@ -56,6 +102,7 @@ function serializeSession(
     startedAt: session.startedAt.toISOString(),
     completedAt: session.completedAt?.toISOString() ?? null,
     painLevel: session.painLevel,
+    patientNote: session.patientNote ?? null,
     completedExerciseIds,
   };
 }
@@ -73,6 +120,18 @@ function buildTodaySummary(
       reps: string;
       notes: string | null;
       precautions: string | null;
+      catalogItemId?: string | null;
+      catalogItem?: {
+        videoUrl: string;
+        thumbnailUrl: string | null;
+        cuesPt: string | null;
+      } | null;
+      professionalExerciseId?: string | null;
+      professionalExercise?: {
+        videoUrl: string | null;
+        photoUrls: string[];
+        cuesPt: string | null;
+      } | null;
     }>;
     sessions: Array<{
       id: string;
@@ -80,6 +139,7 @@ function buildTodaySummary(
       startedAt: Date;
       completedAt: Date | null;
       painLevel: number | null;
+      patientNote?: string | null;
     }>;
   },
   currentSession: { id: string; completedExerciseIds: string[] } | null,
@@ -114,7 +174,7 @@ export async function studentHepRoutes(fastify: FastifyInstance) {
     if (!user) return;
 
     try {
-      const ctx = await loadActiveStudentContext(user.userId);
+      const ctx = await loadActiveStudentContext(user.userId, parseCategoryQuery(request.query));
       if (!ctx) {
         return reply.code(200).send({
           program: null,
@@ -192,7 +252,7 @@ export async function studentHepRoutes(fastify: FastifyInstance) {
     if (!user) return;
 
     try {
-      const ctx = await loadActiveStudentContext(user.userId);
+      const ctx = await loadActiveStudentContext(user.userId, parseCategoryQuery(request.query));
       if (!ctx?.program) {
         return reply.code(200).send({
           today: null,
@@ -239,7 +299,10 @@ export async function studentHepRoutes(fastify: FastifyInstance) {
       if (!user) return;
 
       try {
-        const ctx = await loadActiveStudentContext(user.userId);
+        const ctx = await loadActiveStudentContext(
+          user.userId,
+          parseCategoryQuery(request.query)
+        );
         if (!ctx?.program) {
           return reply.code(404).send({
             error: 'Not Found',
@@ -247,16 +310,45 @@ export async function studentHepRoutes(fastify: FastifyInstance) {
           });
         }
 
-        const existing = ctx.program.sessions.find((session) => session.status === 'IN_PROGRESS');
-        const session =
-          existing ??
-          (await prisma.workoutSession.create({
-            data: {
-              programId: ctx.program.id,
-              studentId: user.userId,
-              status: 'IN_PROGRESS',
-            },
-          }));
+        // Always re-read from DB (do not trust the in-memory sessions list from ctx).
+        let existing = await prisma.workoutSession.findFirst({
+          where: {
+            studentId: user.userId,
+            programId: ctx.program.id,
+            status: 'IN_PROGRESS',
+          },
+          orderBy: { startedAt: 'desc' },
+        });
+
+        let resumed = Boolean(existing);
+        let session = existing;
+
+        if (!session) {
+          try {
+            session = await prisma.workoutSession.create({
+              data: {
+                programId: ctx.program.id,
+                studentId: user.userId,
+                status: 'IN_PROGRESS',
+              },
+            });
+            resumed = false;
+          } catch (error) {
+            // Race: another tab created the IN_PROGRESS row first — resume it.
+            if (!isPrismaUniqueConflict(error)) throw error;
+            existing = await prisma.workoutSession.findFirst({
+              where: {
+                studentId: user.userId,
+                programId: ctx.program.id,
+                status: 'IN_PROGRESS',
+              },
+              orderBy: { startedAt: 'desc' },
+            });
+            if (!existing) throw error;
+            session = existing;
+            resumed = true;
+          }
+        }
 
         const logs = await prisma.sessionExerciseLog.findMany({
           where: { sessionId: session.id },
@@ -268,7 +360,7 @@ export async function studentHepRoutes(fastify: FastifyInstance) {
             session,
             logs.map((log) => log.programExerciseId)
           ),
-          resumed: Boolean(existing),
+          resumed,
           exercises: ctx.program.exercises.map((exercise) => ({
             ...serializeExercise(exercise),
             completed: logs.some((log) => log.programExerciseId === exercise.id),
@@ -308,6 +400,7 @@ export async function studentHepRoutes(fastify: FastifyInstance) {
               include: {
                 exercises: {
                   where: { id: request.params.exerciseId, removedAt: null },
+                  include: exerciseInclude,
                 },
                 enrollment: true,
               },
@@ -388,9 +481,17 @@ export async function studentHepRoutes(fastify: FastifyInstance) {
 
   /**
    * POST /api/v1/me/sessions/:sessionId/complete
-   * Finish session. Optional body: { painLevel: 0-10 }.
+   * Finish session. Optional body: { painLevel: 0-10, patientNote?: string }.
    */
-  fastify.post<{ Params: { sessionId: string }; Body: { painLevel?: unknown; pain_level?: unknown } }>(
+  fastify.post<{
+    Params: { sessionId: string };
+    Body: {
+      painLevel?: unknown;
+      pain_level?: unknown;
+      patientNote?: unknown;
+      patient_note?: unknown;
+    };
+  }>(
     '/api/v1/me/sessions/:sessionId/complete',
     {
       config: { rateLimit: { max: 20, timeWindow: '15 minutes' } },
@@ -404,6 +505,14 @@ export async function studentHepRoutes(fastify: FastifyInstance) {
         return reply.code(422).send({
           error: 'Validation Error',
           message: 'painLevel must be an integer between 0 and 10',
+        });
+      }
+
+      const note = parseOptionalPatientNote(request.body ?? {});
+      if (!note.ok) {
+        return reply.code(422).send({
+          error: 'Validation Error',
+          message: 'patientNote must be a string of at most 2000 characters',
         });
       }
 
@@ -432,6 +541,7 @@ export async function studentHepRoutes(fastify: FastifyInstance) {
             status: 'COMPLETED',
             completedAt: new Date(),
             ...(pain.value !== undefined ? { painLevel: pain.value } : {}),
+            ...(note.value !== undefined ? { patientNote: note.value } : {}),
           },
         });
 
@@ -465,7 +575,7 @@ export async function studentHepRoutes(fastify: FastifyInstance) {
     if (!user) return;
 
     try {
-      const ctx = await loadActiveStudentContext(user.userId);
+      const ctx = await loadActiveStudentContext(user.userId, parseCategoryQuery(request.query));
       if (!ctx?.program) {
         return reply.code(200).send({ cards: [] });
       }
@@ -535,7 +645,19 @@ export async function studentHepRoutes(fastify: FastifyInstance) {
         });
       }
 
-      return reply.code(200).send({ cards });
+      return reply.code(200).send({
+        cards,
+        recentSessions: completed
+          .filter((session) => session.completedAt)
+          .sort((a, b) => (b.completedAt!.getTime() - a.completedAt!.getTime()))
+          .slice(0, 8)
+          .map((session) => ({
+            id: session.id,
+            completedAt: session.completedAt!.toISOString(),
+            painLevel: session.painLevel,
+            patientNote: session.patientNote ?? null,
+          })),
+      });
     } catch (error) {
       fastify.log.error(error, 'GET /me/progress failed');
       return reply.code(500).send({

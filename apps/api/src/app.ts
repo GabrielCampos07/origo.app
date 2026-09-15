@@ -10,6 +10,8 @@ import { checkoutRoutes } from './routes/checkout';
 import { inviteRoutes } from './routes/invites';
 import { professionalHepRoutes } from './routes/professional-hep';
 import { studentHepRoutes } from './routes/student-hep';
+import { exerciseCatalogRoutes } from './routes/exercise-catalog';
+import { professionalExerciseRoutes } from './routes/professional-exercises';
 import { verifyAccessToken } from './lib/jwt';
 
 export const prisma = new PrismaClient({
@@ -144,6 +146,10 @@ export async function buildApp(): Promise<FastifyInstance> {
           updateProgram: 'PUT /api/v1/professional/programs/:programId',
           chart: 'GET /api/v1/professional/students/:studentId/chart',
           notes: 'POST /api/v1/professional/students/:studentId/notes',
+          exerciseCatalog: 'GET /api/v1/exercises/catalog',
+          myExercises: 'GET /api/v1/me/exercises',
+          createMyExercise: 'POST /api/v1/me/exercises',
+          updateMyExercise: 'PATCH /api/v1/me/exercises/:id',
         },
         me: {
           program: 'GET /api/v1/me/program',
@@ -152,6 +158,7 @@ export async function buildApp(): Promise<FastifyInstance> {
           completeExercise: 'POST /api/v1/me/sessions/:sessionId/exercises/:exerciseId/complete',
           completeSession: 'POST /api/v1/me/sessions/:sessionId/complete',
           progress: 'GET /api/v1/me/progress',
+          exercises: 'GET /api/v1/me/exercises',
         },
       },
     };
@@ -165,6 +172,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await server.register(inviteRoutes);
   await server.register(professionalHepRoutes);
   await server.register(studentHepRoutes);
+  await server.register(exerciseCatalogRoutes);
+  await server.register(professionalExerciseRoutes);
 
   server.addHook('onRequest', async (request, reply) => {
     const exemptRoutes = [

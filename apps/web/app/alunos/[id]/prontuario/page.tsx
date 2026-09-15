@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { Alert } from "@/components/auth/Alert";
 import { ChartTimeline } from "@/components/professional/ChartTimeline";
 import { ProShell } from "@/components/professional/ProShell";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { useProfessionalAuth } from "@/lib/use-professional-auth";
 import {
   createStudentNote,
@@ -20,6 +21,7 @@ export default function StudentChartPage() {
   const { loading: authLoading } = useProfessionalAuth();
 
   const [studentName, setStudentName] = useState("");
+  const [studentCategory, setStudentCategory] = useState<string | null>(null);
   const [notes, setNotes] = useState<ClinicalNote[]>([]);
   const [pain, setPain] = useState<PainPoint[]>([]);
   const [conduta, setConduta] = useState("");
@@ -45,6 +47,7 @@ export default function StudentChartPage() {
 
       if (studentResult.ok) {
         setStudentName(studentResult.data.name);
+        setStudentCategory(studentResult.data.category || null);
       }
 
       if (!chartResult.ok) {
@@ -105,13 +108,14 @@ export default function StudentChartPage() {
       }
       backHref={studentId ? `/alunos/${studentId}` : "/alunos"}
       backLabel="Voltar à ficha"
+      category={studentCategory}
     >
       <p className="mb-6 text-xs text-slate-500">
         Registro clínico leve para continuidade entre consultas. Não substitui prontuário fisioterapêutico
         completo (COFFITO 414).
       </p>
 
-      {loading ? <p className="mb-6 text-slate-600">Carregando prontuário...</p> : null}
+      {loading ? <PageSkeleton variant="detail" /> : null}
       {!loading && error ? (
         <div className="mb-6">
           <Alert variant="error">{error}</Alert>

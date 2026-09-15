@@ -7,7 +7,7 @@ Este é um projeto greenfield (novo, do zero) focado em validar a infraestrutura
 **Objetivo:** Levantar stack local com Docker para que outros squads possam implementar login e forgot-password.
 
 **O que está pronto:**
-- ✅ Postgres rodando (porta 5435)
+- ✅ Postgres rodando (porta 5437)
 - ✅ Fastify 5 API (porta 3001)
 - ✅ Mailhog para testes SMTP (UI na porta 8025)
 - ✅ Health check funcionando

@@ -1,8 +1,18 @@
 import { Alert } from "@/components/auth/Alert";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 
-export function LoadingPanel({ label = "Carregando..." }: { label?: string }) {
+export function LoadingPanel({
+  label = "Carregando...",
+  variant = "card",
+}: {
+  label?: string;
+  variant?: "card" | "session" | "detail";
+}) {
   return (
-    <div className="rounded-lg bg-white p-8 text-center text-slate-600 shadow-sm">{label}</div>
+    <div aria-busy="true" aria-live="polite">
+      <span className="sr-only">{label}</span>
+      <PageSkeleton variant={variant} />
+    </div>
   );
 }
 

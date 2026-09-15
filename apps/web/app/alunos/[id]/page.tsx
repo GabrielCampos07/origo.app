@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Alert } from "@/components/auth/Alert";
 import { AdherenceMeter } from "@/components/professional/AdherenceMeter";
 import { ProShell } from "@/components/professional/ProShell";
+import { PageSkeleton } from "@/components/ui/Skeleton";
 import { useProfessionalAuth } from "@/lib/use-professional-auth";
 import {
   categoryLabel,
@@ -14,6 +15,7 @@ import {
   sessionStatusLabel,
   type StudentDetail,
 } from "@/lib/professional";
+import { roleLabels } from "@/lib/role-labels";
 
 export default function StudentFichaPage() {
   const router = useRouter();
@@ -48,12 +50,19 @@ export default function StudentFichaPage() {
     };
   }, [authLoading, studentId]);
 
+  const labels = roleLabels(detail?.category);
+
   return (
     <ProShell
-      title={detail?.name || "Ficha do aluno"}
-      subtitle={detail ? `${detail.email} · ${categoryLabel(detail.category)}` : "Programa ativo, adesão e última sessão."}
+      title={detail?.name || labels.fichaFallback}
+      subtitle={
+        detail
+          ? `${detail.email} · ${categoryLabel(detail.category)}`
+          : "Programa ativo, adesão e última sessão."
+      }
       backHref="/alunos"
-      backLabel="Voltar à lista"
+      backLabel={`Voltar à lista`}
+      category={detail?.category}
       actions={
         detail ? (
           <>
@@ -75,7 +84,7 @@ export default function StudentFichaPage() {
         ) : null
       }
     >
-      {loading ? <p className="text-slate-600">Carregando ficha...</p> : null}
+      {loading ? <PageSkeleton variant="detail" /> : null}
       {!loading && error ? <Alert variant="error">{error}</Alert> : null}
 
       {!loading && detail ? (
@@ -121,7 +130,8 @@ export default function StudentFichaPage() {
                 <p className="font-medium text-slate-900">{detail.program.title}</p>
                 <p className="text-sm text-slate-600">
                   {detail.program.phaseLabel ? `Fase: ${detail.program.phaseLabel} · ` : null}
-                  Meta: {detail.program.targetSessionsPerWeek} sessões/semana · {detail.program.exercises.length} exercícios
+                  Meta: {detail.program.targetSessionsPerWeek} sessões/semana · {detail.program.exercises.length}{" "}
+                  exercícios
                 </p>
                 {detail.program.exercises.length > 0 ? (
                   <ol className="mt-3 space-y-2">
@@ -143,9 +153,7 @@ export default function StudentFichaPage() {
               </div>
             ) : (
               <div>
-                <p className="text-sm text-slate-500">
-                  Este aluno ainda não tem um programa HEP ativo.
-                </p>
+                <p className="text-sm text-slate-500">{labels.noProgramBody}</p>
                 <Link
                   href={`/alunos/${studentId}/hep`}
                   className="mt-3 inline-block text-sm font-medium text-teal-700 hover:text-teal-900"

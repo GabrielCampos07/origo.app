@@ -48,7 +48,7 @@ Configura acesso de **privilégio mínimo** para a role `api_app_role` na tabela
 
 ```bash
 # 1. Conectar ao Postgres local (assumindo docker-compose.yml padrão)
-psql postgresql://origo:origo_dev_password@localhost:5435/origo_dev
+psql postgresql://origo:origo_dev_password@localhost:5437/origo_dev
 
 # 2. Rodar o script
 \i deploy/sql/01_api_app_role_legal_acceptances.sql
@@ -61,7 +61,7 @@ ALTER ROLE api_app_role PASSWORD 'senha_local_dev';
 Em dev local, o app normalmente roda como superuser `origo`. Para testar a role restrita:
 ```bash
 # Testar conexão com role restrita
-DATABASE_URL="postgresql://api_app_role:senha_local_dev@localhost:5435/origo_dev" npm run api:dev
+DATABASE_URL="postgresql://api_app_role:senha_local_dev@localhost:5437/origo_dev" npm run api:dev
 ```
 
 #### Produção (Neon / Fly / outro Postgres gerenciado)
@@ -149,7 +149,7 @@ Configura acesso de **privilégio mínimo** para a role `api_app_role` nas tabel
 
 ```bash
 # 1. Conectar ao Postgres local (assumindo docker-compose.yml padrão)
-psql postgresql://origo:origo_dev_password@localhost:5435/origo_dev
+psql postgresql://origo:origo_dev_password@localhost:5437/origo_dev
 
 # 2. Rodar o script
 \i deploy/sql/02_api_app_role_referral_tables.sql
@@ -162,7 +162,7 @@ ALTER ROLE api_app_role PASSWORD 'senha_local_dev';
 Em dev local, o app normalmente roda como superuser `origo`. Para testar a role restrita:
 ```bash
 # Testar conexão com role restrita
-DATABASE_URL="postgresql://api_app_role:senha_local_dev@localhost:5435/origo_dev" npm run api:dev
+DATABASE_URL="postgresql://api_app_role:senha_local_dev@localhost:5437/origo_dev" npm run api:dev
 ```
 
 #### Produção (Neon / Fly / outro Postgres gerenciado)
@@ -275,7 +275,7 @@ Configura acesso de **privilégio mínimo** para a role `api_app_role` nas tabel
 
 ```bash
 # Local
-psql postgresql://origo:origo_dev_password@localhost:5435/origo_dev
+psql postgresql://origo:origo_dev_password@localhost:5437/origo_dev
 \i deploy/sql/03_api_app_role_auth_tables.sql
 
 # Produção
@@ -323,7 +323,7 @@ Configura acesso de **privilégio mínimo** para a role `api_app_role` nas tabel
 **Como aplicar:**
 
 ```bash
-psql postgresql://origo:origo_dev_password@localhost:5435/origo_dev
+psql postgresql://origo:origo_dev_password@localhost:5437/origo_dev
 \i deploy/sql/04_api_app_role_bloco_a_tables.sql
 ```
 
@@ -369,7 +369,7 @@ Grants de privilégio mínimo para tabelas do Slice 2–3 HEP (programa, sessõe
 **Como aplicar:**
 
 ```bash
-psql postgresql://origo:origo_dev_password@localhost:5435/origo_dev
+psql postgresql://origo:origo_dev_password@localhost:5437/origo_dev
 \i deploy/sql/05_api_app_role_hep_tables.sql
 ```
 

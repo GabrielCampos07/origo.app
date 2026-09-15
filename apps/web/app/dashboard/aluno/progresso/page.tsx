@@ -26,7 +26,7 @@ export default function AlunoProgressoPage() {
     void load();
   }, [load]);
 
-  if (loading) return <LoadingPanel label="Carregando seu progresso..." />;
+  if (loading) return <LoadingPanel label="Carregando seu progresso..." variant="detail" />;
   if (error) return <ErrorPanel message={error} onRetry={() => void load()} />;
 
   const cards = progress?.cards ?? [];
@@ -68,11 +68,16 @@ export default function AlunoProgressoPage() {
           <h2 className="mb-4 text-lg font-semibold text-slate-900">Sessões recentes</h2>
           <ul className="divide-y divide-slate-100">
             {recent.map((session) => (
-              <li key={session.id} className="flex items-center justify-between gap-3 py-3">
+              <li key={session.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                 <span className="text-sm text-slate-700">{formatDateTime(session.completedAt)}</span>
-                <span className="text-sm text-slate-500">
-                  {session.painLevel != null ? `VAS ${session.painLevel}/10` : "VAS não informado"}
-                </span>
+                <div className="sm:max-w-md sm:text-right">
+                  <span className="text-sm text-slate-500">
+                    {session.painLevel != null ? `VAS ${session.painLevel}/10` : "VAS não informado"}
+                  </span>
+                  {session.patientNote ? (
+                    <p className="mt-1 text-sm text-slate-600">{session.patientNote}</p>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>

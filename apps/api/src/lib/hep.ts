@@ -1,6 +1,7 @@
 import type { ProgramExercise, WorkoutSessionStatus } from '@prisma/client';
 
 export const LOW_ADHERENCE_THRESHOLD = 50;
+export const PATIENT_NOTE_MAX_LENGTH = 2000;
 
 /** Monday 00:00:00.000 UTC of the ISO week containing `now`. */
 export function startOfIsoWeekUtc(now = new Date()): Date {
@@ -34,15 +35,68 @@ export function countCompletedThisWeek(
   ).length;
 }
 
-export function serializeExercise(exercise: Pick<ProgramExercise, 'id' | 'orderIndex' | 'name' | 'sets' | 'reps' | 'notes' | 'precautions'>) {
+export type ExerciseMediaSource = 'catalog' | 'professional' | 'custom';
+
+type CatalogFields = {
+  catalogItemId?: string | null;
+  catalogItem?: {
+    videoUrl: string;
+    thumbnailUrl: string | null;
+    cuesPt: string | null;
+  } | null;
+};
+
+type ProfessionalExerciseFields = {
+  professionalExerciseId?: string | null;
+  professionalExercise?: {
+    videoUrl: string | null;
+    photoUrls: string[];
+    cuesPt: string | null;
+  } | null;
+};
+
+export function serializeExercise(
+  exercise: Pick<ProgramExercise, 'id' | 'orderIndex' | 'name' | 'sets' | 'reps' | 'notes' | 'precautions'> &
+    CatalogFields &
+    ProfessionalExerciseFields
+) {
+  const catalogItemId = exercise.catalogItemId ?? null;
+  const professionalExerciseId = exercise.professionalExerciseId ?? null;
+  const catalog = exercise.catalogItem ?? null;
+  const pro = exercise.professionalExercise ?? null;
+
+  let source: ExerciseMediaSource = 'custom';
+  if (catalogItemId) {
+    source = 'catalog';
+  } else if (professionalExerciseId) {
+    source = 'professional';
+  }
+
+  const photoUrls = pro?.photoUrls ?? [];
+  const videoUrl = catalog?.videoUrl ?? pro?.videoUrl ?? null;
+  const thumbnailUrl =
+    catalog?.thumbnailUrl ?? (photoUrls.length > 0 ? photoUrls[0] : null);
+  const cuesPt = catalog?.cuesPt ?? pro?.cuesPt ?? null;
+  const rawNotes = exercise.notes?.trim() ? exercise.notes : null;
+  // Avoid duplicating catalog/library cues as free-text notes in the student UI.
+  const notes =
+    rawNotes && cuesPt && rawNotes.trim() === cuesPt.trim() ? null : rawNotes;
+
   return {
     id: exercise.id,
     orderIndex: exercise.orderIndex,
     name: exercise.name,
     sets: exercise.sets,
     reps: exercise.reps,
-    notes: exercise.notes,
+    notes,
     precautions: exercise.precautions,
+    catalogItemId,
+    professionalExerciseId,
+    videoUrl,
+    thumbnailUrl,
+    photoUrls,
+    cuesPt,
+    source,
   };
 }
 
@@ -68,4 +122,34 @@ export function parseOptionalPainLevel(body: unknown): { ok: true; value: number
   }
 
   return { ok: true, value: numeric };
+}
+
+export function parseOptionalPatientNote(
+  body: unknown
+): { ok: true; value: string | undefined } | { ok: false } {
+  if (!body || typeof body !== 'object') {
+    return { ok: true, value: undefined };
+  }
+
+  const raw = (body as { patientNote?: unknown; patient_note?: unknown }).patientNote
+    ?? (body as { patient_note?: unknown }).patient_note;
+
+  if (raw === undefined || raw === null) {
+    return { ok: true, value: undefined };
+  }
+
+  if (typeof raw !== 'string') {
+    return { ok: false };
+  }
+
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return { ok: true, value: undefined };
+  }
+
+  if (trimmed.length > PATIENT_NOTE_MAX_LENGTH) {
+    return { ok: false };
+  }
+
+  return { ok: true, value: trimmed };
 }
