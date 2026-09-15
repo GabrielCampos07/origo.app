@@ -1807,6 +1807,69 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/v1/me:
+    get:
+      summary: Current user profile
+      description: |
+        Returns id, email, name, role, subscriptionActive, and professional category when present.
+        Exempt from payment gate so unpaid professionals can open account/settings.
+      operationId: getMe
+      tags: [Account]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeProfile'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Update current user profile
+      description: Updates display name. Exempt from payment gate.
+      operationId: patchMe
+      tags: [Account]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  nullable: true
+                  maxLength: 120
+                  description: Display name; empty string or null clears the name
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeProfile'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /api/v1/me/program:
     get:
       summary: Active program + today summary
@@ -2819,6 +2882,28 @@ components:
         today:
           $ref: '#/components/schemas/TodaySummary'
       required: [today]
+
+    MeProfile:
+      type: object
+      required: [id, email, role, subscriptionActive]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [PROFESSIONAL, STUDENT]
+        subscriptionActive:
+          type: boolean
+        category:
+          type: string
+          nullable: true
+          description: ProfessionalProfile.category when role is PROFESSIONAL
 
     StudentProgramResponse:
       type: object

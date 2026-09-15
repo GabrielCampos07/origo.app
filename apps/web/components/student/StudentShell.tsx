@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { ShellSkeleton } from "@/components/ui/Skeleton";
-import { LogoutButton } from "@/components/ui/LogoutButton";
+import { AccountMenu } from "@/components/ui/AccountMenu";
 import {
   clearAuthSession,
   getAccessToken,
@@ -14,6 +14,7 @@ import {
   type OrigoUser,
 } from "@/lib/auth-storage";
 import { fetchStudentProgram } from "@/lib/hep";
+import { fetchMe } from "@/lib/me";
 import { roleLabels } from "@/lib/role-labels";
 
 const NAV = [
@@ -61,6 +62,10 @@ export function StudentShell({ children }: { children: ReactNode }) {
     setUser(storedUser);
     setLoading(false);
 
+    void fetchMe().then((result) => {
+      if (result.ok) setUser(getStoredUser());
+    });
+
     // Enrich category from enrollment when missing (copy labels).
     if (!storedUser.category) {
       void fetchStudentProgram().then((result) => {
@@ -97,7 +102,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
               </span>
             </div>
             <div className="flex flex-col items-end gap-2">
-              <LogoutButton email={user.email} onLogout={handleLogout} />
+              <AccountMenu user={user} onLogout={handleLogout} />
             </div>
           </div>
 

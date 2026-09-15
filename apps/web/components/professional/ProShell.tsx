@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ShellSkeleton } from "@/components/ui/Skeleton";
-import { LogoutButton } from "@/components/ui/LogoutButton";
+import { AccountMenu } from "@/components/ui/AccountMenu";
 import { useProfessionalAuth } from "@/lib/use-professional-auth";
 import { roleLabels } from "@/lib/role-labels";
 
@@ -50,7 +50,7 @@ export function ProShell({
             <Link href="/alunos" className="text-teal-700 hover:text-teal-900">
               {labels.rosterTitle}
             </Link>
-            <LogoutButton email={user?.email} onLogout={handleLogout} />
+            <AccountMenu user={user} onLogout={handleLogout} />
           </div>
         </div>
 

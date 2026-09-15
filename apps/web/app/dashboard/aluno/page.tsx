@@ -13,6 +13,7 @@ import {
   type StudentProgram,
   type TodaySummary,
 } from "@/lib/hep";
+import { getDailyMotivationPhrase } from "@/lib/student-motivation";
 
 export default function AlunoHojePage() {
   const router = useRouter();
@@ -86,12 +87,14 @@ export default function AlunoHojePage() {
   const title = summary?.programTitle ?? program?.title ?? "Seu programa";
   const phase = summary?.phaseLabel ?? program?.phaseLabel;
   const professional = summary?.professionalName ?? program?.professionalName;
+  const motivation = getDailyMotivationPhrase();
 
   return (
     <div className="space-y-6">
       <section className="rounded-lg bg-white p-6 shadow-sm sm:p-8">
         <h1 className="text-2xl font-semibold text-slate-900">Hoje</h1>
-        <p className="mt-1 text-slate-600">
+        <p className="mt-2 text-sm text-teal-800/80">{motivation}</p>
+        <p className="mt-2 text-slate-600">
           {hasProgram
             ? "Seu profissional preparou o que fazer hoje. Complete a sessão e registre como se sentiu."
             : "Quando seu profissional publicar o HEP, os exercícios do dia aparecem aqui."}

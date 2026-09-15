@@ -3,21 +3,23 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageSkeleton } from "@/components/ui/Skeleton";
-import { LogoutButton } from "@/components/ui/LogoutButton";
+import { AccountMenu } from "@/components/ui/AccountMenu";
 import {
   getAccessToken,
   getStoredUser,
   clearAuthSession,
   getMissingDocVersions,
   patchStoredUser,
+  type OrigoUser,
 } from "@/lib/auth-storage";
 import { getProfessionalDashboard, getProfessionalStudents, type DashboardStats } from "@/lib/professional";
+import { fetchMe } from "@/lib/me";
 import { dominantCategory, roleLabels } from "@/lib/role-labels";
 
 export default function ProfessorDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<{ email: string; role?: string; category?: string } | null>(null);
+  const [user, setUser] = useState<OrigoUser | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -48,6 +50,10 @@ export default function ProfessorDashboardPage() {
 
     setUser(storedUser);
     setLoading(false);
+
+    void fetchMe().then((result) => {
+      if (result.ok) setUser(getStoredUser());
+    });
 
     void Promise.all([getProfessionalDashboard(), getProfessionalStudents()]).then(
       ([dashResult, studentsResult]) => {
@@ -86,7 +92,7 @@ export default function ProfessorDashboardPage() {
               {labels.professionalBadge}
             </span>
           </div>
-          <LogoutButton email={user?.email} onLogout={handleLogout} />
+          <AccountMenu user={user} onLogout={handleLogout} />
         </div>
 
         <div className="mb-8">

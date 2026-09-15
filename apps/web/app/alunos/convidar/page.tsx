@@ -2,11 +2,12 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAccessToken, getStoredUser, clearAuthSession } from "@/lib/auth-storage";
+import { getAccessToken, getStoredUser, clearAuthSession, type OrigoUser } from "@/lib/auth-storage";
 import { apiPostAuth, handleApiError } from "@/lib/api";
 import { isValidEmail } from "@/lib/validation";
 import { Alert } from "@/components/auth/Alert";
-import { LogoutButton } from "@/components/ui/LogoutButton";
+import { AccountMenu } from "@/components/ui/AccountMenu";
+import { fetchMe } from "@/lib/me";
 
 // Backend PR #32 @ 2231cfc contract
 type InviteResponse = {
@@ -18,7 +19,7 @@ export default function InviteStudentPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [user, setUser] = useState<{ email: string; role?: string } | null>(null);
+  const [user, setUser] = useState<OrigoUser | null>(null);
   const [email, setEmail] = useState("");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string }>({});
@@ -44,6 +45,10 @@ export default function InviteStudentPage() {
 
     setUser(storedUser);
     setLoading(false);
+
+    void fetchMe().then((result) => {
+      if (result.ok) setUser(getStoredUser());
+    });
   }, [router]);
 
   function validate(): boolean {
@@ -140,7 +145,7 @@ export default function InviteStudentPage() {
               Professor
             </span>
           </div>
-          <LogoutButton email={user?.email} onLogout={handleLogout} />
+          <AccountMenu user={user} onLogout={handleLogout} />
         </div>
 
         <div className="mb-6">

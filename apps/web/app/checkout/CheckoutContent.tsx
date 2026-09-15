@@ -11,9 +11,11 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { getAccessToken, getStoredUser } from "../../lib/auth-storage";
+import { getAccessToken, getStoredUser, type OrigoUser } from "../../lib/auth-storage";
 import { validateReferralCode, type CouponValidation } from "../../lib/referral";
 import { handleApiError, createCheckoutSession } from "../../lib/api";
+import { fetchMe } from "../../lib/me";
+import { subscriptionStatusLabel } from "../../lib/plan-label";
 
 type PlanId = "start" | "pro" | "clinic";
 
@@ -77,7 +79,7 @@ export default function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<{ email: string; role?: string } | null>(null);
+  const [user, setUser] = useState<OrigoUser | null>(null);
   
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("pro");
   const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
@@ -115,6 +117,10 @@ export default function CheckoutContent() {
     }
     
     setUser(storedUser);
+
+    void fetchMe().then((result) => {
+      if (result.ok) setUser(getStoredUser());
+    });
     
     // SEC: Validate plan query param (whitelist only)
     const planParam = searchParams.get("plan");
@@ -267,21 +273,42 @@ export default function CheckoutContent() {
   const plan = PLANS[selectedPlan];
   const price = billingCycle === "monthly" ? plan.price_monthly : plan.price_annual;
   const finalPrice = couponValidation?.valid ? 0 : price;
+  const currentPlanLabel =
+    subscriptionStatusLabel(user?.subscriptionActive, user?.role) ?? "Sem assinatura";
 
   return (
     <div className="min-h-screen bg-[var(--color-green-50)]">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-[var(--color-green-50)]/95 backdrop-blur-md border-b border-[#d1e5d9]/40">
-        <div className="flex items-center justify-between px-5 md:px-20 py-3 md:py-5">
-          <Link href="/home" className="relative h-11 w-[160px] sm:h-14 sm:w-[200px] shrink-0">
-            <Image
-              src="/assets/logo-lockup.png"
-              alt="beOrigo"
-              fill
-              className="object-contain object-left"
-            />
-          </Link>
-          <span className="text-sm text-[var(--color-ink-600)]">{user?.email}</span>
+        <div className="flex items-center justify-between gap-4 px-5 md:px-20 py-3 md:py-5">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined" && window.history.length > 1) {
+                  router.back();
+                  return;
+                }
+                router.push("/dashboard/professor");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-[var(--color-ink-700)] transition-colors hover:bg-white/70 hover:text-[var(--color-ink-900)]"
+              aria-label="Voltar"
+            >
+              <span aria-hidden>←</span>
+              <span className="hidden sm:inline">Voltar</span>
+            </button>
+            <Link href="/home" className="relative h-11 w-[140px] sm:h-14 sm:w-[200px] shrink-0">
+              <Image
+                src="/assets/logo-lockup.png"
+                alt="beOrigo"
+                fill
+                className="object-contain object-left"
+              />
+            </Link>
+          </div>
+          <span className="shrink-0 rounded-full border border-[#c7dbcc] bg-white px-3 py-1 text-xs font-medium text-[var(--brand-primary)] sm:text-sm">
+            Plano atual: {currentPlanLabel}
+          </span>
         </div>
       </header>
 

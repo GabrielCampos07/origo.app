@@ -7,9 +7,12 @@ export type OrigoUserRole = "PROFESSIONAL" | "STUDENT";
 export type OrigoUser = {
   id: string;
   email: string;
+  name?: string | null;
   role?: OrigoUserRole;
   /** Professional category or enrollment category when known (demo / HEP). */
   category?: string;
+  /** SaaS subscription flag for professionals (generic plan chip). */
+  subscriptionActive?: boolean;
 };
 
 const ACCESS_KEY = "origo_access_token";

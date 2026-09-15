@@ -12,6 +12,7 @@ import { professionalHepRoutes } from './routes/professional-hep';
 import { studentHepRoutes } from './routes/student-hep';
 import { exerciseCatalogRoutes } from './routes/exercise-catalog';
 import { professionalExerciseRoutes } from './routes/professional-exercises';
+import { meRoutes } from './routes/me';
 import { verifyAccessToken } from './lib/jwt';
 
 export const prisma = new PrismaClient({
@@ -152,6 +153,8 @@ export async function buildApp(): Promise<FastifyInstance> {
           updateMyExercise: 'PATCH /api/v1/me/exercises/:id',
         },
         me: {
+          profile: 'GET /api/v1/me',
+          updateProfile: 'PATCH /api/v1/me',
           program: 'GET /api/v1/me/program',
           todaySummary: 'GET /api/v1/me/today-summary',
           startSession: 'POST /api/v1/me/sessions',
@@ -174,6 +177,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await server.register(studentHepRoutes);
   await server.register(exerciseCatalogRoutes);
   await server.register(professionalExerciseRoutes);
+  await server.register(meRoutes);
 
   server.addHook('onRequest', async (request, reply) => {
     const exemptRoutes = [
@@ -190,6 +194,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       '/api/v1/referrals/validate',
       '/api/v1/webhooks/stripe',
       '/api/v1/invites/validate',
+      '/api/v1/me',
     ];
 
     const requestPath = request.url.split('?')[0];

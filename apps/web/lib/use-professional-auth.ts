@@ -9,6 +9,7 @@ import {
   getStoredUser,
   type OrigoUser,
 } from "./auth-storage";
+import { fetchMe } from "./me";
 
 export function useProfessionalAuth() {
   const router = useRouter();
@@ -42,6 +43,10 @@ export function useProfessionalAuth() {
 
     setUser(storedUser);
     setLoading(false);
+
+    void fetchMe().then((result) => {
+      if (result.ok) setUser(getStoredUser());
+    });
   }, [router]);
 
   function handleLogout() {
