@@ -23,6 +23,7 @@ export function ExerciseRow({
 }: Props) {
   const dose = formatExerciseDose(exercise);
   const setCount = exercise.sets && exercise.sets > 0 ? exercise.sets : 0;
+  const photoUrls = exercise.photoUrls ?? [];
 
   return (
     <article
@@ -41,7 +42,60 @@ export function ExerciseRow({
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-slate-900">{exercise.name}</h3>
           {dose ? <p className="mt-0.5 text-sm text-slate-600">{dose}</p> : null}
-          {exercise.notes ? <p className="mt-2 text-sm text-slate-600">{exercise.notes}</p> : null}
+
+          {exercise.videoUrl ? (
+            <div className="mt-3 overflow-hidden rounded-md bg-slate-900">
+              <video
+                className="aspect-video w-full"
+                controls
+                playsInline
+                preload="metadata"
+                poster={exercise.thumbnailUrl ?? undefined}
+                src={exercise.videoUrl}
+              >
+                Seu navegador não reproduz vídeo.
+              </video>
+            </div>
+          ) : null}
+
+          {!exercise.videoUrl && photoUrls.length > 0 ? (
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {photoUrls.map((url) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={url}
+                  src={url}
+                  alt={`Foto de ${exercise.name}`}
+                  className="aspect-square w-full rounded-md object-cover"
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {exercise.videoUrl && photoUrls.length > 0 ? (
+            <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+              {photoUrls.map((url) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={url}
+                  src={url}
+                  alt={`Foto de ${exercise.name}`}
+                  className="h-16 w-16 shrink-0 rounded-md object-cover"
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {exercise.cuesPt ? (
+            <p className="mt-2 text-sm text-slate-600">
+              <span className="font-medium text-slate-700">Dicas: </span>
+              {exercise.cuesPt}
+            </p>
+          ) : null}
+          {exercise.notes &&
+          exercise.notes.trim() !== (exercise.cuesPt ?? "").trim() ? (
+            <p className="mt-2 text-sm text-slate-600">{exercise.notes}</p>
+          ) : null}
           {exercise.precautions ? (
             <p className="mt-2 text-sm text-amber-800">
               <span className="font-medium">Cuidado:</span> {exercise.precautions}

@@ -10,7 +10,8 @@ services:
       POSTGRES_PASSWORD: origo_dev_password
       POSTGRES_DB: origo_dev
     ports:
-      - "5435:5432"
+      # Host 5437 avoids clashes with other local DBs (5432/5434/5435)
+      - "5437:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

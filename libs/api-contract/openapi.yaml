@@ -1545,6 +1545,177 @@ paths:
               schema:
                 $ref: '#/components/schemas/BlockedExerciseDeleteError'
 
+  /api/v1/exercises/catalog:
+    get:
+      summary: Search exercise video catalog
+      description: |
+        PROFESSIONAL-only. Subject to payment + legal gates like other paid pro routes.
+        Returns active catalog items matching optional `q` (namePt/slug/tags) and `tag`.
+      operationId: searchExerciseCatalog
+      tags: [HEP Professional]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Catalog search results (max 50)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseCatalogResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / payment_required / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/me/exercises:
+    get:
+      summary: List professional-owned exercises
+      description: |
+        PROFESSIONAL-only. Returns the caller's active library items (default active=true).
+        Optional `q` (name/tags) and `tag` filters. Subject to payment + legal gates.
+      operationId: listMyExercises
+      tags: [HEP Professional]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Professional exercise library (max 50)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfessionalExerciseListResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / payment_required / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create a professional-owned exercise
+      operationId: createMyExercise
+      tags: [HEP Professional]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfessionalExerciseInput'
+      responses:
+        '200':
+          description: Created exercise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfessionalExerciseResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / payment_required / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/me/exercises/{id}:
+    patch:
+      summary: Update a professional-owned exercise
+      description: Ownership enforced — other professionals receive 404.
+      operationId: updateMyExercise
+      tags: [HEP Professional]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfessionalExercisePatch'
+      responses:
+        '200':
+          description: Updated exercise
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfessionalExerciseResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden / payment_required / legal_acceptance_required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Exercise not found or not owned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /api/v1/professional/students/{studentId}/chart:
     get:
       summary: Clinical chart (notes + pain timeline)
@@ -1631,6 +1802,69 @@ paths:
                 $ref: '#/components/schemas/Error'
         '422':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/me:
+    get:
+      summary: Current user profile
+      description: |
+        Returns id, email, name, role, subscriptionActive, and professional category when present.
+        Exempt from payment gate so unpaid professionals can open account/settings.
+      operationId: getMe
+      tags: [Account]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeProfile'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      summary: Update current user profile
+      description: Updates display name. Exempt from payment gate.
+      operationId: patchMe
+      tags: [Account]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  nullable: true
+                  maxLength: 120
+                  description: Display name; empty string or null clears the name
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeProfile'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
           content:
             application/json:
               schema:
@@ -1813,6 +2047,10 @@ paths:
                   type: integer
                   minimum: 0
                   maximum: 10
+                patientNote:
+                  type: string
+                  maxLength: 2000
+                  description: Optional free-text note from the patient (trimmed; empty omitted)
       responses:
         '200':
           description: Session completed
@@ -1845,7 +2083,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '422':
-          description: Invalid painLevel
+          description: Invalid painLevel or patientNote
           content:
             application/json:
               schema:
@@ -2156,7 +2394,154 @@ components:
         precautions:
           type: string
           nullable: true
+        catalogItemId:
+          type: string
+          nullable: true
+        professionalExerciseId:
+          type: string
+          nullable: true
+        videoUrl:
+          type: string
+          nullable: true
+        thumbnailUrl:
+          type: string
+          nullable: true
+        photoUrls:
+          type: array
+          items:
+            type: string
+        cuesPt:
+          type: string
+          nullable: true
+        source:
+          type: string
+          enum: [catalog, professional, custom]
       required: [id, orderIndex, name, sets, reps]
+
+    ExerciseCatalogItem:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        namePt:
+          type: string
+        categoryTags:
+          type: array
+          items:
+            type: string
+        videoUrl:
+          type: string
+        thumbnailUrl:
+          type: string
+          nullable: true
+        durationSec:
+          type: integer
+          nullable: true
+        cuesPt:
+          type: string
+          nullable: true
+      required: [id, slug, namePt, categoryTags, videoUrl]
+
+    ExerciseCatalogResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExerciseCatalogItem'
+      required: [items]
+
+    ProfessionalExercise:
+      type: object
+      properties:
+        id:
+          type: string
+        namePt:
+          type: string
+        categoryTags:
+          type: array
+          items:
+            type: string
+        videoUrl:
+          type: string
+          nullable: true
+        photoUrls:
+          type: array
+          items:
+            type: string
+        cuesPt:
+          type: string
+          nullable: true
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, namePt, categoryTags, photoUrls, active]
+
+    ProfessionalExerciseListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProfessionalExercise'
+      required: [items]
+
+    ProfessionalExerciseResponse:
+      type: object
+      properties:
+        exercise:
+          $ref: '#/components/schemas/ProfessionalExercise'
+      required: [exercise]
+
+    ProfessionalExerciseInput:
+      type: object
+      properties:
+        namePt:
+          type: string
+        categoryTags:
+          type: array
+          items:
+            type: string
+        videoUrl:
+          type: string
+          nullable: true
+        photoUrls:
+          type: array
+          items:
+            type: string
+        cuesPt:
+          type: string
+          nullable: true
+      required: [namePt]
+
+    ProfessionalExercisePatch:
+      type: object
+      properties:
+        namePt:
+          type: string
+        categoryTags:
+          type: array
+          items:
+            type: string
+        videoUrl:
+          type: string
+          nullable: true
+        photoUrls:
+          type: array
+          items:
+            type: string
+        cuesPt:
+          type: string
+          nullable: true
+        active:
+          type: boolean
 
     ProgramExerciseInput:
       type: object
@@ -2169,6 +2554,7 @@ components:
           minimum: 0
         name:
           type: string
+          description: Required unless catalogItemId or professionalExerciseId is provided
         sets:
           type: integer
           minimum: 1
@@ -2181,7 +2567,14 @@ components:
         precautions:
           type: string
           nullable: true
-      required: [orderIndex, name, sets, reps]
+        catalogItemId:
+          type: string
+          nullable: true
+        professionalExerciseId:
+          type: string
+          nullable: true
+          description: Mutually exclusive with catalogItemId; must be owned by the professional
+      required: [orderIndex, sets, reps]
 
     Program:
       type: object
@@ -2282,6 +2675,10 @@ components:
           nullable: true
           minimum: 0
           maximum: 10
+        patientNote:
+          type: string
+          nullable: true
+          maxLength: 2000
 
     ProfessionalStudentListItem:
       type: object
@@ -2443,6 +2840,10 @@ components:
               painLevel:
                 type: integer
                 nullable: true
+              patientNote:
+                type: string
+                nullable: true
+                maxLength: 2000
       required: [notes, painTimeline]
 
     TodaySummary:
@@ -2481,6 +2882,28 @@ components:
         today:
           $ref: '#/components/schemas/TodaySummary'
       required: [today]
+
+    MeProfile:
+      type: object
+      required: [id, email, role, subscriptionActive]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [PROFESSIONAL, STUDENT]
+        subscriptionActive:
+          type: boolean
+        category:
+          type: string
+          nullable: true
+          description: ProfessionalProfile.category when role is PROFESSIONAL
 
     StudentProgramResponse:
       type: object

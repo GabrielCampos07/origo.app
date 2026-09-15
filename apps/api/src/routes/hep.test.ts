@@ -200,7 +200,7 @@ describe('Slice 2–3 HEP API', () => {
   });
 
   async function inject(
-    method: 'GET' | 'POST' | 'PUT',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH',
     url: string,
     opts: { userId?: string; email?: string; payload?: Record<string, unknown> } = {}
   ) {
@@ -352,11 +352,68 @@ describe('Slice 2–3 HEP API', () => {
     const completeSession = await inject(
       'POST',
       `/api/v1/me/sessions/${startBody.session.id}/complete`,
-      { userId: studentId, email: studentEmail, payload: { painLevel: 2 } }
+      {
+        userId: studentId,
+        email: studentEmail,
+        payload: { painLevel: 2, patientNote: '  Leve dor no final  ' },
+      }
     );
     assert.equal(completeSession.statusCode, 200);
     assert.equal(completeSession.json().session.status, 'COMPLETED');
     assert.equal(completeSession.json().session.painLevel, 2);
+    assert.equal(completeSession.json().session.patientNote, 'Leve dor no final');
+  });
+
+  it('rejects oversized patientNote on complete', async () => {
+    const start = await inject('POST', '/api/v1/me/sessions', {
+      userId: studentId,
+      email: studentEmail,
+    });
+    assert.equal(start.statusCode, 200);
+    const sessionId = start.json().session.id;
+
+    const res = await inject('POST', `/api/v1/me/sessions/${sessionId}/complete`, {
+      userId: studentId,
+      email: studentEmail,
+      payload: { patientNote: 'x'.repeat(2001) },
+    });
+    assert.equal(res.statusCode, 422);
+  });
+
+  it('returns catalog search for paid professionals', async () => {
+    await prisma.exerciseCatalogItem.upsert({
+      where: { slug: `hep-test-ponte-${suffix}` },
+      update: {
+        namePt: 'Ponte teste catálogo',
+        categoryTags: ['gluteo', 'teste'],
+        videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        active: true,
+      },
+      create: {
+        slug: `hep-test-ponte-${suffix}`,
+        namePt: 'Ponte teste catálogo',
+        categoryTags: ['gluteo', 'teste'],
+        videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        active: true,
+      },
+    });
+
+    const res = await inject('GET', '/api/v1/exercises/catalog?q=ponte', {
+      userId: professionalId,
+      email: professionalEmail,
+    });
+    assert.equal(res.statusCode, 200);
+    const items = res.json().items as Array<{ namePt: string; videoUrl: string }>;
+    assert.ok(Array.isArray(items));
+    assert.ok(items.some((item) => /ponte/i.test(item.namePt)));
+    assert.ok(items.every((item) => typeof item.videoUrl === 'string' && item.videoUrl.startsWith('https://')));
+
+    const unpaid = await inject('GET', '/api/v1/exercises/catalog?q=ponte', {
+      userId: unpaidProfessionalId,
+      email: unpaidProfessionalEmail,
+    });
+    assert.equal(unpaid.statusCode, 403);
+    assert.equal(unpaid.json().error, 'payment_required');
   });
 
   it('returns dynamic progress cards including VAS', async () => {
@@ -402,6 +459,12 @@ describe('Slice 2–3 HEP API', () => {
     assert.equal(chart.statusCode, 200);
     assert.equal(chart.json().notes.length, 1);
     assert.ok(chart.json().painTimeline.length >= 1);
+    assert.ok(
+      chart.json().painTimeline.some(
+        (point: { patientNote?: string | null; painLevel?: number | null }) =>
+          point.painLevel != null || Boolean(point.patientNote)
+      )
+    );
   });
 
   it('rejects removing an exercise that has a SessionExerciseLog', async () => {
@@ -467,5 +530,185 @@ describe('Slice 2–3 HEP API', () => {
       where: { id: removableExerciseId },
     });
     assert.ok(stillThere?.removedAt);
+  });
+
+  it('lets a professional CRUD own exercises and forbids other pro PATCH', async () => {
+    const create = await inject('POST', '/api/v1/me/exercises', {
+      userId: professionalId,
+      email: professionalEmail,
+      payload: {
+        namePt: 'Meu agachamento',
+        categoryTags: ['perna', 'forca'],
+        videoUrl: 'https://example.com/squat.mp4',
+        photoUrls: ['https://example.com/squat-1.jpg'],
+        cuesPt: 'Joelhos alinhados',
+      },
+    });
+    assert.equal(create.statusCode, 200);
+    const created = create.json().exercise;
+    assert.equal(created.namePt, 'Meu agachamento');
+    assert.deepEqual(created.categoryTags, ['perna', 'forca']);
+    assert.equal(created.videoUrl, 'https://example.com/squat.mp4');
+    assert.equal(created.photoUrls[0], 'https://example.com/squat-1.jpg');
+    assert.equal(created.active, true);
+
+    const list = await inject('GET', '/api/v1/me/exercises?q=agachamento', {
+      userId: professionalId,
+      email: professionalEmail,
+    });
+    assert.equal(list.statusCode, 200);
+    assert.ok(
+      (list.json().items as Array<{ id: string }>).some((item) => item.id === created.id)
+    );
+
+    const otherList = await inject('GET', '/api/v1/me/exercises?q=agachamento', {
+      userId: otherProfessionalId,
+      email: otherProfessionalEmail,
+    });
+    assert.equal(otherList.statusCode, 200);
+    assert.ok(
+      !(otherList.json().items as Array<{ id: string }>).some((item) => item.id === created.id)
+    );
+
+    const patch = await inject('PATCH', `/api/v1/me/exercises/${created.id}`, {
+      userId: professionalId,
+      email: professionalEmail,
+      payload: { namePt: 'Agachamento atualizado', cuesPt: 'Peito aberto' },
+    });
+    assert.equal(patch.statusCode, 200);
+    assert.equal(patch.json().exercise.namePt, 'Agachamento atualizado');
+    assert.equal(patch.json().exercise.cuesPt, 'Peito aberto');
+
+    const forbidden = await inject('PATCH', `/api/v1/me/exercises/${created.id}`, {
+      userId: otherProfessionalId,
+      email: otherProfessionalEmail,
+      payload: { namePt: 'hack' },
+    });
+    assert.equal(forbidden.statusCode, 404);
+  });
+
+  it('keeps catalog search read-only (no create)', async () => {
+    const res = await inject('POST', '/api/v1/exercises/catalog', {
+      userId: professionalId,
+      email: professionalEmail,
+      payload: { namePt: 'should fail', videoUrl: 'https://example.com/x.mp4' },
+    });
+    assert.ok(res.statusCode === 404 || res.statusCode === 405);
+  });
+
+  it('allows a program to mix catalog, professional, and free-text lines', async () => {
+    const catalog = await prisma.exerciseCatalogItem.upsert({
+      where: { slug: `hep-mix-catalog-${suffix}` },
+      update: {
+        namePt: 'Catálogo mix',
+        categoryTags: ['mix'],
+        videoUrl: 'https://example.com/catalog-mix.mp4',
+        active: true,
+      },
+      create: {
+        slug: `hep-mix-catalog-${suffix}`,
+        namePt: 'Catálogo mix',
+        categoryTags: ['mix'],
+        videoUrl: 'https://example.com/catalog-mix.mp4',
+        active: true,
+      },
+    });
+
+    const mine = await prisma.professionalExercise.create({
+      data: {
+        professionalUserId: professionalId,
+        namePt: 'Meu exercício mix',
+        categoryTags: ['mix', 'pro'],
+        videoUrl: 'https://example.com/pro-mix.mp4',
+        photoUrls: ['https://example.com/pro-mix.jpg'],
+        cuesPt: 'Controle o movimento',
+      },
+    });
+
+    const res = await inject('PUT', `/api/v1/professional/programs/${programId}`, {
+      userId: professionalId,
+      email: professionalEmail,
+      payload: {
+        title: 'Programa misto',
+        targetSessionsPerWeek: 3,
+        exercises: [
+          {
+            id: loggedExerciseId,
+            orderIndex: 0,
+            name: 'Ponte glútea',
+            sets: 3,
+            reps: '12',
+          },
+          {
+            orderIndex: 1,
+            catalogItemId: catalog.id,
+            sets: 3,
+            reps: '10',
+          },
+          {
+            orderIndex: 2,
+            professionalExerciseId: mine.id,
+            sets: 2,
+            reps: '8',
+          },
+          {
+            orderIndex: 3,
+            name: 'Texto livre mix',
+            sets: 1,
+            reps: '20s',
+          },
+        ],
+      },
+    });
+    assert.equal(res.statusCode, 200);
+    const exercises = res.json().program.exercises as Array<{
+      name: string;
+      source: string;
+      catalogItemId: string | null;
+      professionalExerciseId: string | null;
+      videoUrl: string | null;
+      photoUrls: string[];
+    }>;
+    assert.equal(exercises.length, 4);
+
+    const catalogLine = exercises.find((exercise) => exercise.catalogItemId === catalog.id);
+    assert.ok(catalogLine);
+    assert.equal(catalogLine!.source, 'catalog');
+    assert.equal(catalogLine!.name, 'Catálogo mix');
+    assert.equal(catalogLine!.videoUrl, 'https://example.com/catalog-mix.mp4');
+    assert.equal(catalogLine!.professionalExerciseId, null);
+
+    const proLine = exercises.find((exercise) => exercise.professionalExerciseId === mine.id);
+    assert.ok(proLine);
+    assert.equal(proLine!.source, 'professional');
+    assert.equal(proLine!.name, 'Meu exercício mix');
+    assert.equal(proLine!.videoUrl, 'https://example.com/pro-mix.mp4');
+    assert.deepEqual(proLine!.photoUrls, ['https://example.com/pro-mix.jpg']);
+    assert.equal(proLine!.catalogItemId, null);
+
+    const customLine = exercises.find((exercise) => exercise.name === 'Texto livre mix');
+    assert.ok(customLine);
+    assert.equal(customLine!.source, 'custom');
+    assert.equal(customLine!.catalogItemId, null);
+    assert.equal(customLine!.professionalExerciseId, null);
+
+    const both = await inject('PUT', `/api/v1/professional/programs/${programId}`, {
+      userId: professionalId,
+      email: professionalEmail,
+      payload: {
+        title: 'Programa misto',
+        targetSessionsPerWeek: 3,
+        exercises: [
+          {
+            orderIndex: 0,
+            catalogItemId: catalog.id,
+            professionalExerciseId: mine.id,
+            sets: 1,
+            reps: '5',
+          },
+        ],
+      },
+    });
+    assert.equal(both.statusCode, 422);
   });
 });

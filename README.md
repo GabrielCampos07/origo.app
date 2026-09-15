@@ -8,7 +8,7 @@ Este repositório contém a **infraestrutura base** (W0.4 + W0.5 stub) para perm
 
 **O que está pronto:**
 - ✅ API Fastify 5 + TypeScript
-- ✅ Postgres 16 (via Docker, porta 5435)
+- ✅ Postgres 16 (via Docker, porta 5437)
 - ✅ Prisma 6 ORM
 - ✅ Mailhog para testes SMTP
 - ✅ Health check (`GET /health`)
@@ -30,7 +30,7 @@ Este repositório contém a **infraestrutura base** (W0.4 + W0.5 stub) para perm
 | Serviço         | Porta |
 |-----------------|-------|
 | API             | 3001  |
-| Postgres        | 5435  |
+| Postgres        | 5437  |
 | Mailhog Web UI  | 8025  |
 | Mailhog SMTP    | 1025  |
 | Web (Next.js)   | 3456  |
@@ -105,7 +105,7 @@ Gerenciados via `deploy/docker-compose.yml`:
 
 | Service   | Porta Host | Porta Container | Descrição                      |
 |-----------|------------|-----------------|--------------------------------|
-| postgres  | 5435       | 5432            | PostgreSQL 16                  |
+| postgres  | 5437       | 5432            | PostgreSQL 16                  |
 | mailhog   | 8025       | 8025            | Mailhog Web UI                 |
 | mailhog   | 1025       | 1025            | Mailhog SMTP server            |
 
@@ -210,7 +210,7 @@ cp .env.example .env
 | Variável      | Padrão                          | Descrição                        |
 |---------------|---------------------------------|----------------------------------|
 | PORT          | 3001                            | Porta da API                     |
-| DATABASE_URL  | postgresql://...@localhost:5435 | Connection string do Postgres    |
+| DATABASE_URL  | postgresql://...@localhost:5437 | Connection string do Postgres    |
 | SMTP_HOST     | localhost                       | Servidor SMTP (Mailhog)          |
 | SMTP_PORT     | 1025                            | Porta SMTP                       |
 | LOG_LEVEL     | info                            | Nível de log (debug, info, warn) |
@@ -272,11 +272,11 @@ Privado — Uso interno apenas.
 
 ## 🆘 Troubleshooting
 
-### Porta 5435 já em uso
+### Porta 5437 já em uso
 
 ```bash
 # Descobrir processo usando a porta
-lsof -i :5435
+lsof -i :5437
 
 # Parar o Docker Compose e tentar novamente
 docker compose -f deploy/docker-compose.yml down
@@ -293,7 +293,7 @@ docker compose -f deploy/docker-compose.yml ps
 docker compose -f deploy/docker-compose.yml logs postgres
 
 # Testar conexão direta
-psql postgresql://origo:origo_dev_password@localhost:5435/origo_dev
+psql postgresql://origo:origo_dev_password@localhost:5437/origo_dev
 ```
 
 ### Prisma errors após mudanças no schema

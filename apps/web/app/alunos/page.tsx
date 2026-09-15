@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Alert } from "@/components/auth/Alert";
 import { AdherenceMeter } from "@/components/professional/AdherenceMeter";
 import { ProShell } from "@/components/professional/ProShell";
+import { PageSkeleton } from "@/components/ui/Skeleton";
+import { getStoredUser, patchStoredUser } from "@/lib/auth-storage";
 import { useProfessionalAuth } from "@/lib/use-professional-auth";
 import {
   categoryLabel,
@@ -13,6 +15,7 @@ import {
   getProfessionalStudents,
   type StudentListItem,
 } from "@/lib/professional";
+import { dominantCategory, roleLabels } from "@/lib/role-labels";
 
 export default function StudentsListPage() {
   const router = useRouter();
@@ -20,6 +23,7 @@ export default function StudentsListPage() {
   const [students, setStudents] = useState<StudentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(getStoredUser()?.category ?? null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -35,6 +39,11 @@ export default function StudentsListPage() {
       } else {
         setError(null);
         setStudents(result.data);
+        const nextCategory = dominantCategory(result.data.map((s) => s.category)) || getStoredUser()?.category || null;
+        if (nextCategory) {
+          setCategory(nextCategory);
+          patchStoredUser({ category: nextCategory });
+        }
       }
       setLoading(false);
     }
@@ -45,23 +54,26 @@ export default function StudentsListPage() {
     };
   }, [authLoading]);
 
+  const labels = roleLabels(category);
+
   return (
     <ProShell
-      title="Alunos"
+      title={labels.rosterTitle}
       subtitle="Vínculos ativos e adesão da semana."
       backHref="/dashboard/professor"
       backLabel="Voltar ao dashboard"
+      category={category}
       actions={
         <button
           type="button"
           onClick={() => router.push("/alunos/convidar")}
           className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
         >
-          Convidar aluno
+          {labels.inviteCta}
         </button>
       }
     >
-      {loading ? <p className="text-slate-600">Carregando alunos...</p> : null}
+      {loading ? <PageSkeleton variant="list" /> : null}
 
       {!loading && error ? (
         <div className="space-y-3">
@@ -86,8 +98,8 @@ export default function StudentsListPage() {
               />
             </svg>
           </div>
-          <h2 className="mb-1 text-lg font-semibold text-slate-900">Nenhum aluno ativo</h2>
-          <p className="mb-4 text-sm text-slate-600">Convide um aluno para começar o programa HEP.</p>
+          <h2 className="mb-1 text-lg font-semibold text-slate-900">{labels.emptyRosterTitle}</h2>
+          <p className="mb-4 text-sm text-slate-600">{labels.emptyRosterBody}</p>
           <Link
             href="/alunos/convidar"
             className="inline-block rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"

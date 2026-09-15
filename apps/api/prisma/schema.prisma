@@ -73,6 +73,7 @@ model User {
   workoutSessions           WorkoutSession[]
   clinicalNotesAsStudent    ClinicalNote[]         @relation("ClinicalNoteStudent")
   clinicalNotesAsProfessional ClinicalNote[]       @relation("ClinicalNoteProfessional")
+  professionalExercises     ProfessionalExercise[]
 
   @@map("users")
 }
@@ -311,36 +312,88 @@ model Program {
   @@map("programs")
 }
 
-// Slice 2–3 HEP: free-text exercise lines (NO catalog / ex_* IDs)
+// Exercise video catalog (shared library; program lines optionally link here)
+// DATABASE SECURITY NOTES:
+// - PURPOSE: Curated exercise demos (name, tags, placeholder video URLs)
+// - LEAST PRIVILEGE: api_app_role has SELECT only (writes via seed/owner)
+model ExerciseCatalogItem {
+  id           String            @id @default(cuid())
+  slug         String            @unique
+  namePt       String
+  categoryTags String[]
+  videoUrl     String
+  thumbnailUrl String?
+  durationSec  Int?
+  cuesPt       String?
+  active       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  programExercises ProgramExercise[]
+
+  @@index([active])
+  @@map("exercise_catalog_items")
+}
+
+// Professional-owned exercise library (per-pro demos with optional video/photos)
+// DATABASE SECURITY NOTES:
+// - PURPOSE: Custom exercises belonging to one PROFESSIONAL user
+// - PII: professionalUserId
+// - LEAST PRIVILEGE: api_app_role has SELECT+INSERT+UPDATE (no DELETE; soft via active)
+model ProfessionalExercise {
+  id                 String            @id @default(cuid())
+  professionalUserId String
+  namePt             String
+  categoryTags       String[]
+  videoUrl           String?
+  photoUrls          String[]          @default([])
+  cuesPt             String?
+  active             Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  professional       User              @relation(fields: [professionalUserId], references: [id], onDelete: Cascade)
+  programExercises   ProgramExercise[]
+
+  @@index([professionalUserId, active])
+  @@map("professional_exercises")
+}
+
+// Slice 2–3 HEP: free-text exercise lines (optional catalog / pro library link for video)
 // DATABASE SECURITY NOTES:
 // - PURPOSE: Prescribed exercise text on a program
 // - SOFT-DELETE: removedAt hides a line without DELETE privilege; lines with
 //   SessionExerciseLog MUST NOT be removed (enforced in API)
 // - DATA INTEGRITY: Partial unique (programId, orderIndex) WHERE removedAt IS NULL
+// - APP RULE: not both catalogItemId and professionalExerciseId (enforced in API)
 // - LEAST PRIVILEGE: api_app_role has SELECT+INSERT+UPDATE (no DELETE)
 model ProgramExercise {
-  id          String    @id @default(cuid())
-  programId   String
-  orderIndex  Int
-  name        String
-  sets        Int
-  reps        String
-  notes       String?
-  precautions String?
-  removedAt   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  program     Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
-  sessionLogs SessionExerciseLog[]
+  id                     String                 @id @default(cuid())
+  programId              String
+  orderIndex             Int
+  name                   String
+  sets                   Int
+  reps                   String
+  notes                  String?
+  precautions            String?
+  catalogItemId          String?
+  professionalExerciseId String?
+  removedAt              DateTime?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  program                Program                @relation(fields: [programId], references: [id], onDelete: Cascade)
+  catalogItem            ExerciseCatalogItem?   @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  professionalExercise   ProfessionalExercise?  @relation(fields: [professionalExerciseId], references: [id], onDelete: SetNull)
+  sessionLogs            SessionExerciseLog[]
 
   @@index([programId])
+  @@index([catalogItemId])
+  @@index([professionalExerciseId])
   @@map("program_exercises")
 }
 
-// Slice 2–3 HEP: student workout session + optional VAS painLevel 0–10
+// Slice 2–3 HEP: student workout session + optional VAS painLevel 0–10 + patientNote
 // DATABASE SECURITY NOTES:
-// - PURPOSE: Execution log + VAS (dado de saúde)
-// - PII/HEALTH: studentId + painLevel
+// - PURPOSE: Execution log + VAS + optional free-text patient note (dado de saúde)
+// - PII/HEALTH: studentId + painLevel + patientNote
 // - DATA INTEGRITY: Partial unique one IN_PROGRESS per (studentId, programId)
 // - CHECK: painLevel IS NULL OR (0..10)
 // - LEAST PRIVILEGE: api_app_role has SELECT+INSERT+UPDATE (no DELETE)
@@ -352,6 +405,7 @@ model WorkoutSession {
   startedAt    DateTime             @default(now())
   completedAt  DateTime?
   painLevel    Int?
+  patientNote  String?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
   program      Program              @relation(fields: [programId], references: [id], onDelete: Cascade)

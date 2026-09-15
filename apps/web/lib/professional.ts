@@ -13,9 +13,11 @@
  * Helpers normalize both. PUT/POST send both key styles so either backend lands.
  */
 
-import { apiGet, apiPostAuth, apiPut, handleApiError, type ApiResult } from "./api";
+import { apiGet, apiPatch, apiPostAuth, apiPut, handleApiError, type ApiResult } from "./api";
 
 export type ProfessionalCategory = "FISIOTERAPIA" | "EDUCACAO_FISICA" | "PERSONAL";
+
+export type ExerciseSource = "catalog" | "professional" | "custom";
 
 export type ProgramExercise = {
   id: string;
@@ -25,6 +27,13 @@ export type ProgramExercise = {
   reps: string;
   notes: string;
   precautions: string;
+  catalogItemId: string;
+  professionalExerciseId: string;
+  videoUrl: string;
+  thumbnailUrl: string;
+  photoUrls: string[];
+  cuesPt: string;
+  source: ExerciseSource;
   hasLogs: boolean;
 };
 
@@ -88,7 +97,8 @@ export type ClinicalNote = {
 
 export type PainPoint = {
   sessionId: string;
-  painLevel: number;
+  painLevel: number | null;
+  patientNote: string | null;
   completedAt: string;
 };
 
@@ -188,6 +198,20 @@ function pickAdherence(source: Json): {
 
 export function normalizeExercise(raw: unknown, index = 0): ProgramExercise {
   const item = isRecord(raw) ? raw : {};
+  const catalogItemId = asString(firstDefined(item.catalog_item_id, item.catalogItemId));
+  const professionalExerciseId = asString(
+    firstDefined(item.professional_exercise_id, item.professionalExerciseId)
+  );
+  const sourceRaw = asString(item.source).toLowerCase();
+  let source: ExerciseSource = "custom";
+  if (sourceRaw === "catalog" || sourceRaw === "professional" || sourceRaw === "custom") {
+    source = sourceRaw;
+  } else if (catalogItemId) {
+    source = "catalog";
+  } else if (professionalExerciseId) {
+    source = "professional";
+  }
+  const photosRaw = firstDefined(item.photoUrls, item.photo_urls, item.photos);
   return {
     id: asString(firstDefined(item.id, item.exercise_id, item.exerciseId)),
     orderIndex: asNumber(firstDefined(item.order_index, item.orderIndex), index),
@@ -196,6 +220,15 @@ export function normalizeExercise(raw: unknown, index = 0): ProgramExercise {
     reps: asString(item.reps),
     notes: asString(item.notes),
     precautions: asString(item.precautions),
+    catalogItemId,
+    professionalExerciseId,
+    videoUrl: asString(firstDefined(item.video_url, item.videoUrl)),
+    thumbnailUrl: asString(firstDefined(item.thumbnail_url, item.thumbnailUrl)),
+    photoUrls: Array.isArray(photosRaw)
+      ? photosRaw.map((url) => asString(url)).filter(Boolean)
+      : [],
+    cuesPt: asString(firstDefined(item.cues_pt, item.cuesPt, item.cues)),
+    source,
     hasLogs: asBoolean(
       firstDefined(
         item.has_logs,
@@ -357,12 +390,21 @@ export function normalizeChart(raw: unknown): StudentChart {
       ? painRaw
           .map((point): PainPoint | null => {
             const item = isRecord(point) ? point : {};
-            const painLevel = firstDefined(item.pain_level, item.painLevel);
-            if (painLevel === undefined || painLevel === null) return null;
-            const completedAt = asString(firstDefined(item.completed_at, item.completedAt, item.created_at, item.createdAt));
+            const painLevelRaw = firstDefined(item.pain_level, item.painLevel);
+            const patientNote = asNullableString(
+              firstDefined(item.patient_note, item.patientNote, item.note)
+            );
+            const painLevel =
+              painLevelRaw === undefined || painLevelRaw === null ? null : asNumber(painLevelRaw);
+            if (painLevel === null && !patientNote) return null;
+            const completedAt = asString(
+              firstDefined(item.completed_at, item.completedAt, item.created_at, item.createdAt)
+            );
+            if (!completedAt) return null;
             return {
               sessionId: asString(firstDefined(item.session_id, item.sessionId, item.id), completedAt),
-              painLevel: asNumber(painLevel),
+              painLevel,
+              patientNote,
               completedAt,
             };
           })
@@ -480,6 +522,8 @@ export type UpdateProgramPayload = {
     reps: string;
     notes: string;
     precautions: string;
+    catalogItemId?: string;
+    professionalExerciseId?: string;
   }>;
 };
 
@@ -496,6 +540,15 @@ function programWriteBody(payload: UpdateProgramPayload): Record<string, unknown
       reps: exercise.reps,
       notes: exercise.notes || null,
       precautions: exercise.precautions || null,
+      ...(exercise.catalogItemId
+        ? { catalogItemId: exercise.catalogItemId, catalog_item_id: exercise.catalogItemId }
+        : {}),
+      ...(exercise.professionalExerciseId
+        ? {
+            professionalExerciseId: exercise.professionalExerciseId,
+            professional_exercise_id: exercise.professionalExerciseId,
+          }
+        : {}),
     })),
   };
 }
@@ -617,4 +670,185 @@ export async function createStudentNote(
     };
   }
   return { ok: true, data: created };
+}
+
+export type CatalogExerciseItem = {
+  id: string;
+  slug: string;
+  namePt: string;
+  categoryTags: string[];
+  videoUrl: string;
+  thumbnailUrl: string | null;
+  durationSec: number | null;
+  cuesPt: string | null;
+};
+
+export type ProfessionalExerciseItem = {
+  id: string;
+  namePt: string;
+  categoryTags: string[];
+  videoUrl: string | null;
+  photoUrls: string[];
+  cuesPt: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function normalizeProfessionalExerciseItem(raw: unknown): ProfessionalExerciseItem | null {
+  if (!isRecord(raw)) return null;
+  const id = asString(raw.id);
+  const namePt = asString(firstDefined(raw.namePt, raw.name_pt, raw.name));
+  if (!id || !namePt) return null;
+  const tagsRaw = firstDefined(raw.categoryTags, raw.category_tags, raw.tags);
+  const photosRaw = firstDefined(raw.photoUrls, raw.photo_urls, raw.photos);
+  return {
+    id,
+    namePt,
+    categoryTags: Array.isArray(tagsRaw)
+      ? tagsRaw.map((tag) => asString(tag)).filter(Boolean)
+      : [],
+    videoUrl: asNullableString(firstDefined(raw.videoUrl, raw.video_url)),
+    photoUrls: Array.isArray(photosRaw)
+      ? photosRaw.map((url) => asString(url)).filter(Boolean)
+      : [],
+    cuesPt: asNullableString(firstDefined(raw.cuesPt, raw.cues_pt, raw.cues)),
+    active: asBoolean(firstDefined(raw.active, true)),
+    createdAt: asString(firstDefined(raw.createdAt, raw.created_at)),
+    updatedAt: asString(firstDefined(raw.updatedAt, raw.updated_at)),
+  };
+}
+
+export async function searchExerciseCatalog(params?: {
+  q?: string;
+  tag?: string;
+}): Promise<ApiResult<CatalogExerciseItem[]>> {
+  const search = new URLSearchParams();
+  if (params?.q?.trim()) search.set("q", params.q.trim());
+  if (params?.tag?.trim()) search.set("tag", params.tag.trim());
+  const suffix = search.toString() ? `?${search.toString()}` : "";
+  const result = await apiGet<unknown>(`/api/v1/exercises/catalog${suffix}`);
+  if (!result.ok) {
+    return mapFetchError(result, "Não foi possível buscar o catálogo de exercícios.");
+  }
+  const root = isRecord(result.data) ? result.data : {};
+  const list = Array.isArray(root.items)
+    ? root.items
+    : Array.isArray(root.exercises)
+      ? root.exercises
+      : Array.isArray(result.data)
+        ? result.data
+        : [];
+  const items = list
+    .map((raw): CatalogExerciseItem | null => {
+      if (!isRecord(raw)) return null;
+      const id = asString(raw.id);
+      const namePt = asString(firstDefined(raw.namePt, raw.name_pt, raw.name));
+      if (!id || !namePt) return null;
+      const tagsRaw = firstDefined(raw.categoryTags, raw.category_tags, raw.tags);
+      return {
+        id,
+        slug: asString(raw.slug),
+        namePt,
+        categoryTags: Array.isArray(tagsRaw)
+          ? tagsRaw.map((tag) => asString(tag)).filter(Boolean)
+          : [],
+        videoUrl: asString(firstDefined(raw.videoUrl, raw.video_url)),
+        thumbnailUrl: asNullableString(firstDefined(raw.thumbnailUrl, raw.thumbnail_url)),
+        durationSec: (() => {
+          const value = firstDefined(raw.durationSec, raw.duration_sec);
+          return value === undefined || value === null ? null : asNumber(value);
+        })(),
+        cuesPt: asNullableString(firstDefined(raw.cuesPt, raw.cues_pt, raw.cues)),
+      };
+    })
+    .filter((item): item is CatalogExerciseItem => item !== null);
+  return { ok: true, data: items };
+}
+
+export async function listMyExercises(params?: {
+  q?: string;
+  tag?: string;
+}): Promise<ApiResult<ProfessionalExerciseItem[]>> {
+  const search = new URLSearchParams();
+  if (params?.q?.trim()) search.set("q", params.q.trim());
+  if (params?.tag?.trim()) search.set("tag", params.tag.trim());
+  const suffix = search.toString() ? `?${search.toString()}` : "";
+  const result = await apiGet<unknown>(`/api/v1/me/exercises${suffix}`);
+  if (!result.ok) {
+    return mapFetchError(result, "Não foi possível carregar seus exercícios.");
+  }
+  const root = isRecord(result.data) ? result.data : {};
+  const list = Array.isArray(root.items)
+    ? root.items
+    : Array.isArray(root.exercises)
+      ? root.exercises
+      : Array.isArray(result.data)
+        ? result.data
+        : [];
+  const items = list
+    .map(normalizeProfessionalExerciseItem)
+    .filter((item): item is ProfessionalExerciseItem => item !== null);
+  return { ok: true, data: items };
+}
+
+export type CreateMyExercisePayload = {
+  namePt: string;
+  categoryTags?: string[];
+  videoUrl?: string;
+  photoUrls?: string[];
+  cuesPt?: string;
+};
+
+export async function createMyExercise(
+  payload: CreateMyExercisePayload
+): Promise<ApiResult<ProfessionalExerciseItem>> {
+  const result = await apiPostAuth<unknown>("/api/v1/me/exercises", {
+    namePt: payload.namePt,
+    categoryTags: payload.categoryTags ?? [],
+    ...(payload.videoUrl ? { videoUrl: payload.videoUrl } : {}),
+    ...(payload.photoUrls?.length ? { photoUrls: payload.photoUrls } : {}),
+    ...(payload.cuesPt ? { cuesPt: payload.cuesPt } : {}),
+  });
+  if (!result.ok) {
+    handleApiError(result);
+    return { ...result, message: result.message || "Não foi possível criar o exercício." };
+  }
+  const item = normalizeProfessionalExerciseItem(
+    isRecord(result.data) ? firstDefined(result.data.exercise, result.data) : result.data
+  );
+  if (!item) {
+    return { ok: false, kind: "unknown", message: "Exercício criado, mas a resposta veio incompleta." };
+  }
+  return { ok: true, data: item };
+}
+
+export async function updateMyExercise(
+  id: string,
+  payload: Partial<CreateMyExercisePayload> & { active?: boolean }
+): Promise<ApiResult<ProfessionalExerciseItem>> {
+  const body: Record<string, unknown> = {};
+  if (payload.namePt !== undefined) body.namePt = payload.namePt;
+  if (payload.categoryTags !== undefined) body.categoryTags = payload.categoryTags;
+  if (payload.videoUrl !== undefined) body.videoUrl = payload.videoUrl || null;
+  if (payload.photoUrls !== undefined) body.photoUrls = payload.photoUrls;
+  if (payload.cuesPt !== undefined) body.cuesPt = payload.cuesPt || null;
+  if (payload.active !== undefined) body.active = payload.active;
+
+  const result = await apiPatch<unknown>(`/api/v1/me/exercises/${encodeURIComponent(id)}`, body);
+  if (!result.ok) {
+    handleApiError(result);
+    return { ...result, message: result.message || "Não foi possível atualizar o exercício." };
+  }
+  const item = normalizeProfessionalExerciseItem(
+    isRecord(result.data) ? firstDefined(result.data.exercise, result.data) : result.data
+  );
+  if (!item) {
+    return {
+      ok: false,
+      kind: "unknown",
+      message: "Exercício atualizado, mas a resposta veio incompleta.",
+    };
+  }
+  return { ok: true, data: item };
 }

@@ -14,6 +14,36 @@ import {
 
 const prisma = new PrismaClient();
 
+const exerciseWithMediaInclude = {
+  catalogItem: {
+    select: {
+      videoUrl: true,
+      thumbnailUrl: true,
+      cuesPt: true,
+    },
+  },
+  professionalExercise: {
+    select: {
+      videoUrl: true,
+      photoUrls: true,
+      cuesPt: true,
+    },
+  },
+} as const;
+
+type ExerciseWithMedia = ProgramExercise & {
+  catalogItem?: {
+    videoUrl: string;
+    thumbnailUrl: string | null;
+    cuesPt: string | null;
+  } | null;
+  professionalExercise?: {
+    videoUrl: string | null;
+    photoUrls: string[];
+    cuesPt: string | null;
+  } | null;
+};
+
 type ExerciseInput = {
   id?: string;
   name?: unknown;
@@ -22,6 +52,10 @@ type ExerciseInput = {
   notes?: unknown;
   precautions?: unknown;
   orderIndex?: unknown;
+  catalogItemId?: unknown;
+  catalog_item_id?: unknown;
+  professionalExerciseId?: unknown;
+  professional_exercise_id?: unknown;
 };
 
 type UpdateProgramBody = {
@@ -56,12 +90,13 @@ function lastCompletedSession(sessions: WorkoutSession[]) {
     startedAt: session.startedAt.toISOString(),
     completedAt: session.completedAt?.toISOString() ?? null,
     painLevel: session.painLevel,
+    patientNote: session.patientNote ?? null,
   };
 }
 
 function serializeProgram(
   program: Program,
-  exercises: ProgramExercise[],
+  exercises: ExerciseWithMedia[],
   exerciseIdsWithLogs: Set<string> = new Set()
 ) {
   return {
@@ -114,9 +149,42 @@ function parseExercises(raw: unknown): { ok: true; exercises: ParsedExercise[] }
       return { ok: false, message: 'Each exercise must be an object' };
     }
 
-    const name = parseRequiredText(item.name, 'name', 200);
-    if (!name) {
+    const catalogRaw = item.catalogItemId ?? item.catalog_item_id;
+    let catalogItemId: string | null = null;
+    if (catalogRaw !== undefined && catalogRaw !== null && catalogRaw !== '') {
+      if (typeof catalogRaw !== 'string' || !catalogRaw.trim()) {
+        return { ok: false, message: 'catalogItemId must be a string id' };
+      }
+      catalogItemId = catalogRaw.trim();
+    }
+
+    const proRaw = item.professionalExerciseId ?? item.professional_exercise_id;
+    let professionalExerciseId: string | null = null;
+    if (proRaw !== undefined && proRaw !== null && proRaw !== '') {
+      if (typeof proRaw !== 'string' || !proRaw.trim()) {
+        return { ok: false, message: 'professionalExerciseId must be a string id' };
+      }
+      professionalExerciseId = proRaw.trim();
+    }
+
+    if (catalogItemId && professionalExerciseId) {
+      return {
+        ok: false,
+        message: 'Cannot set both catalogItemId and professionalExerciseId',
+      };
+    }
+
+    const nameRaw =
+      item.name === undefined || item.name === null
+        ? ''
+        : typeof item.name === 'string'
+          ? item.name.trim()
+          : String(item.name).trim();
+    if (!nameRaw && !catalogItemId && !professionalExerciseId) {
       return { ok: false, message: 'Exercise name is required' };
+    }
+    if (nameRaw.length > 200) {
+      return { ok: false, message: 'Exercise name must be at most 200 characters' };
     }
 
     const sets = typeof item.sets === 'number' ? item.sets : Number(item.sets);
@@ -166,7 +234,17 @@ function parseExercises(raw: unknown): { ok: true; exercises: ParsedExercise[] }
 
     const id = typeof item.id === 'string' && item.id.trim() ? item.id.trim() : undefined;
 
-    exercises.push({ id, name, sets, reps, notes, precautions, orderIndex });
+    exercises.push({
+      id,
+      name: nameRaw,
+      sets,
+      reps,
+      notes,
+      precautions,
+      orderIndex,
+      catalogItemId,
+      professionalExerciseId,
+    });
   }
 
   return { ok: true, exercises };
@@ -180,7 +258,101 @@ type ParsedExercise = {
   notes: string | null;
   precautions: string | null;
   orderIndex: number;
+  catalogItemId: string | null;
+  professionalExerciseId: string | null;
 };
+
+async function resolveExerciseDefaults(
+  professionalUserId: string,
+  exercises: ParsedExercise[]
+): Promise<{ ok: true; exercises: ParsedExercise[] } | { ok: false; message: string }> {
+  const catalogIds = [
+    ...new Set(
+      exercises
+        .map((exercise) => exercise.catalogItemId)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    ),
+  ];
+  const proIds = [
+    ...new Set(
+      exercises
+        .map((exercise) => exercise.professionalExerciseId)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    ),
+  ];
+
+  const [catalogItems, proItems] = await Promise.all([
+    catalogIds.length === 0
+      ? Promise.resolve([])
+      : prisma.exerciseCatalogItem.findMany({
+          where: { id: { in: catalogIds }, active: true },
+          select: { id: true, namePt: true },
+        }),
+    proIds.length === 0
+      ? Promise.resolve([])
+      : prisma.professionalExercise.findMany({
+          where: {
+            id: { in: proIds },
+            professionalUserId,
+            active: true,
+          },
+          select: { id: true, namePt: true },
+        }),
+  ]);
+
+  const catalogById = new Map(catalogItems.map((item) => [item.id, item]));
+  const proById = new Map(proItems.map((item) => [item.id, item]));
+
+  const resolved: ParsedExercise[] = [];
+  for (const exercise of exercises) {
+    if (exercise.catalogItemId && exercise.professionalExerciseId) {
+      return {
+        ok: false,
+        message: 'Cannot set both catalogItemId and professionalExerciseId',
+      };
+    }
+
+    if (exercise.catalogItemId) {
+      const catalog = catalogById.get(exercise.catalogItemId);
+      if (!catalog) {
+        return { ok: false, message: 'catalogItemId not found or inactive' };
+      }
+      resolved.push({
+        ...exercise,
+        professionalExerciseId: null,
+        name: exercise.name || catalog.namePt,
+      });
+      continue;
+    }
+
+    if (exercise.professionalExerciseId) {
+      const pro = proById.get(exercise.professionalExerciseId);
+      if (!pro) {
+        return {
+          ok: false,
+          message: 'professionalExerciseId not found, inactive, or not owned',
+        };
+      }
+      resolved.push({
+        ...exercise,
+        catalogItemId: null,
+        name: exercise.name || pro.namePt,
+      });
+      continue;
+    }
+
+    if (!exercise.name) {
+      return { ok: false, message: 'Exercise name is required' };
+    }
+    resolved.push({
+      ...exercise,
+      catalogItemId: null,
+      professionalExerciseId: null,
+    });
+  }
+
+  return { ok: true, exercises: resolved };
+}
 
 function parseProgramMetadata(body: { title?: unknown; phaseLabel?: unknown; targetSessionsPerWeek?: unknown }) {
   let title: string | undefined;
@@ -233,7 +405,9 @@ async function loadOwnedProgram(professionalUserId: string, programId: string) {
     },
     include: {
       enrollment: true,
-      exercises: true,
+      exercises: {
+        include: exerciseWithMediaInclude,
+      },
     },
   });
 }
@@ -397,7 +571,10 @@ export async function professionalHepRoutes(fastify: FastifyInstance) {
         const program = await prisma.program.findFirst({
           where: { enrollmentId: enrollment.id, status: 'ACTIVE' },
           include: {
-            exercises: { orderBy: { orderIndex: 'asc' } },
+            exercises: {
+              orderBy: { orderIndex: 'asc' },
+              include: exerciseWithMediaInclude,
+            },
             sessions: {
               where: { status: 'COMPLETED' },
               orderBy: { completedAt: 'desc' },
@@ -480,7 +657,11 @@ export async function professionalHepRoutes(fastify: FastifyInstance) {
         if (!parsed.ok) {
           return reply.code(422).send({ error: 'Validation Error', message: parsed.message });
         }
-        exercises = parsed.exercises;
+        const resolved = await resolveExerciseDefaults(user.userId, parsed.exercises);
+        if (!resolved.ok) {
+          return reply.code(422).send({ error: 'Validation Error', message: resolved.message });
+        }
+        exercises = resolved.exercises;
       }
 
       try {
@@ -508,10 +689,17 @@ export async function professionalHepRoutes(fastify: FastifyInstance) {
                 reps: exercise.reps,
                 notes: exercise.notes,
                 precautions: exercise.precautions,
+                catalogItemId: exercise.catalogItemId,
+                professionalExerciseId: exercise.professionalExerciseId,
               })),
             },
           },
-          include: { exercises: { orderBy: { orderIndex: 'asc' } } },
+          include: {
+            exercises: {
+              orderBy: { orderIndex: 'asc' },
+              include: exerciseWithMediaInclude,
+            },
+          },
         });
 
         return reply.code(200).send({ program: serializeProgram(program, program.exercises) });
@@ -565,7 +753,11 @@ export async function professionalHepRoutes(fastify: FastifyInstance) {
         if (!parsed.ok) {
           return reply.code(422).send({ error: 'Validation Error', message: parsed.message });
         }
-        incoming = parsed.exercises;
+        const resolved = await resolveExerciseDefaults(user.userId, parsed.exercises);
+        if (!resolved.ok) {
+          return reply.code(422).send({ error: 'Validation Error', message: resolved.message });
+        }
+        incoming = resolved.exercises;
       }
 
       try {
@@ -633,6 +825,8 @@ export async function professionalHepRoutes(fastify: FastifyInstance) {
                     notes: exercise.notes,
                     precautions: exercise.precautions,
                     orderIndex: exercise.orderIndex,
+                    catalogItemId: exercise.catalogItemId,
+                    professionalExerciseId: exercise.professionalExerciseId,
                   },
                 });
               } else {
@@ -645,6 +839,8 @@ export async function professionalHepRoutes(fastify: FastifyInstance) {
                     notes: exercise.notes,
                     precautions: exercise.precautions,
                     orderIndex: exercise.orderIndex,
+                    catalogItemId: exercise.catalogItemId,
+                    professionalExerciseId: exercise.professionalExerciseId,
                   },
                 });
               }
@@ -653,7 +849,12 @@ export async function professionalHepRoutes(fastify: FastifyInstance) {
 
           return tx.program.findUniqueOrThrow({
             where: { id: program.id },
-            include: { exercises: { orderBy: { orderIndex: 'asc' } } },
+            include: {
+              exercises: {
+                orderBy: { orderIndex: 'asc' },
+                include: exerciseWithMediaInclude,
+              },
+            },
           });
         });
 
@@ -689,7 +890,7 @@ export async function professionalHepRoutes(fastify: FastifyInstance) {
 
   /**
    * GET /api/v1/professional/students/:studentId/chart
-   * Clinical notes + pain timeline (completed sessions with VAS).
+   * Clinical notes + pain timeline (completed sessions with VAS and/or patientNote).
    */
   fastify.get<{ Params: { studentId: string } }>(
     '/api/v1/professional/students/:studentId/chart',
@@ -717,14 +918,15 @@ export async function professionalHepRoutes(fastify: FastifyInstance) {
             where: {
               studentId: request.params.studentId,
               status: 'COMPLETED',
-              painLevel: { not: null },
               program: { enrollmentId: enrollment.id },
+              OR: [{ painLevel: { not: null } }, { patientNote: { not: null } }],
             },
             orderBy: { completedAt: 'asc' },
             select: {
               id: true,
               completedAt: true,
               painLevel: true,
+              patientNote: true,
             },
           }),
         ]);
@@ -742,6 +944,7 @@ export async function professionalHepRoutes(fastify: FastifyInstance) {
             sessionId: session.id,
             completedAt: session.completedAt?.toISOString() ?? null,
             painLevel: session.painLevel,
+            patientNote: session.patientNote,
           })),
         });
       } catch (error) {

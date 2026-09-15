@@ -7,7 +7,12 @@ export type OrigoUserRole = "PROFESSIONAL" | "STUDENT";
 export type OrigoUser = {
   id: string;
   email: string;
+  name?: string | null;
   role?: OrigoUserRole;
+  /** Professional category or enrollment category when known (demo / HEP). */
+  category?: string;
+  /** SaaS subscription flag for professionals (generic plan chip). */
+  subscriptionActive?: boolean;
 };
 
 const ACCESS_KEY = "origo_access_token";
@@ -54,6 +59,21 @@ export function getStoredUser(): OrigoUser | null {
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(ACCESS_KEY);
+}
+
+export function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(REFRESH_KEY);
+}
+
+/** Merge fields into the stored user without touching tokens. */
+export function patchStoredUser(patch: Partial<OrigoUser>): OrigoUser | null {
+  if (typeof window === "undefined") return null;
+  const current = getStoredUser();
+  if (!current) return null;
+  const next = { ...current, ...patch };
+  localStorage.setItem(USER_KEY, JSON.stringify(next));
+  return next;
 }
 
 export function getMissingDocVersions(): string[] | null {

@@ -6,7 +6,7 @@
  * - GET  /api/v1/me/today-summary
  * - POST /api/v1/me/sessions
  * - POST /api/v1/me/sessions/:sessionId/exercises/:exerciseId/complete
- * - POST /api/v1/me/sessions/:sessionId/complete  { painLevel?: 0-10 }
+ * - POST /api/v1/me/sessions/:sessionId/complete  { painLevel?: 0-10, patientNote?: string }
  * - GET  /api/v1/me/progress
  *
  * Backend sibling owns the API. This client accepts both snake_case and
@@ -14,6 +14,13 @@
  */
 
 import { apiGet, apiPostAuth, handleApiError, type ApiResult } from "./api";
+import { getStoredUser, patchStoredUser } from "./auth-storage";
+
+function studentCategoryQuery(): string {
+  const category = getStoredUser()?.category?.trim();
+  if (!category) return "";
+  return `?category=${encodeURIComponent(category)}`;
+}
 
 const ACTIVE_SESSION_KEY = "origo_active_session_id";
 
@@ -25,6 +32,13 @@ export type ProgramExercise = {
   reps: string | null;
   notes: string | null;
   precautions: string | null;
+  catalogItemId: string | null;
+  professionalExerciseId: string | null;
+  videoUrl: string | null;
+  thumbnailUrl: string | null;
+  photoUrls: string[];
+  cuesPt: string | null;
+  source: "catalog" | "professional" | "custom" | null;
   completedInCurrentSession: boolean;
 };
 
@@ -36,6 +50,7 @@ export type StudentProgram = {
   targetSessionsPerWeek: number | null;
   exercises: ProgramExercise[];
   professionalName: string | null;
+  category: string | null;
   adherencePercent: number | null;
   sessionsThisWeek: number | null;
   sessionCompletedToday: boolean;
@@ -69,6 +84,7 @@ export type WorkoutSession = {
   startedAt: string | null;
   completedAt: string | null;
   painLevel: number | null;
+  patientNote: string | null;
   completedExerciseIds: string[];
   exerciseLogs: ExerciseLog[];
   exercises: ProgramExercise[];
@@ -85,6 +101,7 @@ export type RecentSession = {
   id: string;
   completedAt: string | null;
   painLevel: number | null;
+  patientNote: string | null;
 };
 
 export type StudentProgress = {
@@ -154,6 +171,22 @@ export function normalizeExercise(raw: unknown, fallbackIndex = 0): ProgramExerc
   if (!isRecord(raw)) return null;
   const id = asString(pick(raw, "id", "exerciseId", "exercise_id", "programExerciseId", "program_exercise_id"));
   const name = asString(pick(raw, "name", "title", "exerciseName", "exercise_name")) ?? "Exercício";
+  const catalogItemId = asString(pick(raw, "catalogItemId", "catalog_item_id"));
+  const professionalExerciseId = asString(
+    pick(raw, "professionalExerciseId", "professional_exercise_id")
+  );
+  const sourceRaw = (asString(pick(raw, "source")) ?? "").toLowerCase();
+  let source: ProgramExercise["source"] = "custom";
+  if (sourceRaw === "catalog" || sourceRaw === "professional" || sourceRaw === "custom") {
+    source = sourceRaw;
+  } else if (catalogItemId) {
+    source = "catalog";
+  } else if (professionalExerciseId) {
+    source = "professional";
+  } else {
+    source = "custom";
+  }
+  const photosRaw = pick(raw, "photoUrls", "photo_urls", "photos");
   return {
     id: id ?? "",
     orderIndex: asNumber(pick(raw, "orderIndex", "order_index", "order")) ?? fallbackIndex,
@@ -162,6 +195,15 @@ export function normalizeExercise(raw: unknown, fallbackIndex = 0): ProgramExerc
     reps: asString(pick(raw, "reps", "repetitions", "targetReps", "target_reps")),
     notes: asString(pick(raw, "notes", "description", "instructions")),
     precautions: asString(pick(raw, "precautions", "cautions", "warnings")),
+    catalogItemId,
+    professionalExerciseId,
+    videoUrl: asString(pick(raw, "videoUrl", "video_url")),
+    thumbnailUrl: asString(pick(raw, "thumbnailUrl", "thumbnail_url")),
+    photoUrls: Array.isArray(photosRaw)
+      ? photosRaw.map((url) => asString(url)).filter((url): url is string => Boolean(url))
+      : [],
+    cuesPt: asString(pick(raw, "cuesPt", "cues_pt", "cues")),
+    source,
     completedInCurrentSession:
       asBoolean(
         pick(raw, "completedInCurrentSession", "completed_in_current_session", "completed")
@@ -201,6 +243,17 @@ export function normalizeProgram(raw: unknown): StudentProgram | null {
     pick(program, "exercises", "programExercises", "program_exercises", "items")
   );
 
+  const enrollmentCategory = (() => {
+    if (isRecord(raw)) {
+      const enrollment = pick(raw, "enrollment");
+      if (isRecord(enrollment)) {
+        return asString(pick(enrollment, "category"));
+      }
+      return asString(pick(raw, "category", "enrollmentCategory", "enrollment_category"));
+    }
+    return asString(pick(program, "category"));
+  })();
+
   return {
     id,
     title: asString(pick(program, "title", "name")) ?? "Programa HEP",
@@ -211,6 +264,7 @@ export function normalizeProgram(raw: unknown): StudentProgram | null {
     ),
     exercises,
     professionalName: professionalNameFrom(program) ?? (isRecord(raw) ? professionalNameFrom(raw) : null),
+    category: enrollmentCategory || null,
     adherencePercent: asNumber(
       pick(program, "adherencePercent", "adherence_percent", "adherence", "adesao")
     ),
@@ -344,6 +398,7 @@ export function normalizeSession(raw: unknown): WorkoutSession | null {
     startedAt: asString(pick(session, "startedAt", "started_at")),
     completedAt: asString(pick(session, "completedAt", "completed_at")),
     painLevel: asNumber(pick(session, "painLevel", "pain_level", "vas")),
+    patientNote: asString(pick(session, "patientNote", "patient_note")),
     completedExerciseIds,
     exerciseLogs: logs,
     exercises: normalizeExerciseList(pick(session, "exercises") ?? (isRecord(raw) ? pick(raw as JsonRecord, "exercises") : undefined)),
@@ -429,6 +484,7 @@ export function normalizeProgress(raw: unknown): StudentProgress {
             id,
             completedAt: asString(pick(item, "completedAt", "completed_at")),
             painLevel: asNumber(pick(item, "painLevel", "pain_level", "vas")),
+            patientNote: asString(pick(item, "patientNote", "patient_note")),
           };
         })
         .filter((item): item is RecentSession => item !== null)
@@ -503,7 +559,7 @@ export function isNotFound(result: ApiResult<unknown>): boolean {
 }
 
 export async function fetchStudentProgram(): Promise<ApiResult<StudentProgram | null>> {
-  const result = await apiGet<unknown>("/api/v1/me/program");
+  const result = await apiGet<unknown>(`/api/v1/me/program${studentCategoryQuery()}`);
   if (!result.ok) {
     handleApiError(result);
     if (isNotFound(result)) return { ok: true, data: null };
@@ -516,6 +572,15 @@ export async function fetchStudentProgram(): Promise<ApiResult<StudentProgram | 
   if (isRecord(result.data)) {
     const professionalName = professionalNameFrom(result.data);
     if (professionalName) program.professionalName = professionalName;
+
+    const enrollment = pick(result.data, "enrollment");
+    if (isRecord(enrollment)) {
+      const category = asString(pick(enrollment, "category"));
+      if (category) {
+        program.category = category;
+        patchStoredUser({ category });
+      }
+    }
 
     const today = isRecord(result.data.today)
       ? normalizeTodaySummary({ today: result.data.today }, program)
@@ -540,7 +605,7 @@ export async function fetchStudentProgram(): Promise<ApiResult<StudentProgram | 
 export async function fetchTodaySummary(
   fallbackProgram?: StudentProgram | null
 ): Promise<ApiResult<TodaySummary>> {
-  const result = await apiGet<unknown>("/api/v1/me/today-summary");
+  const result = await apiGet<unknown>(`/api/v1/me/today-summary${studentCategoryQuery()}`);
   if (result.ok) {
     return { ok: true, data: normalizeTodaySummary(result.data, fallbackProgram) };
   }
@@ -552,7 +617,7 @@ export async function fetchTodaySummary(
 }
 
 export async function startOrResumeSession(): Promise<ApiResult<WorkoutSession>> {
-  const result = await apiPostAuth<unknown>("/api/v1/me/sessions", {});
+  const result = await apiPostAuth<unknown>(`/api/v1/me/sessions${studentCategoryQuery()}`, {});
   if (!result.ok) {
     handleApiError(result);
     if (isNotFound(result)) {
@@ -602,12 +667,17 @@ export async function completeSessionExercise(
 
 export async function completeSession(
   sessionId: string,
-  painLevel?: number
+  options?: { painLevel?: number; patientNote?: string }
 ): Promise<ApiResult<WorkoutSession | Record<string, never>>> {
   const body: Record<string, unknown> = {};
-  if (painLevel != null) {
-    body.painLevel = painLevel;
-    body.pain_level = painLevel;
+  if (options?.painLevel != null) {
+    body.painLevel = options.painLevel;
+    body.pain_level = options.painLevel;
+  }
+  if (options?.patientNote != null && options.patientNote.trim()) {
+    const note = options.patientNote.trim();
+    body.patientNote = note;
+    body.patient_note = note;
   }
   const result = await apiPostAuth<unknown>(
     `/api/v1/me/sessions/${encodeURIComponent(sessionId)}/complete`,
@@ -627,7 +697,7 @@ export async function completeSession(
 }
 
 export async function fetchProgress(): Promise<ApiResult<StudentProgress>> {
-  const result = await apiGet<unknown>("/api/v1/me/progress");
+  const result = await apiGet<unknown>(`/api/v1/me/progress${studentCategoryQuery()}`);
   if (!result.ok) {
     handleApiError(result);
     if (isNotFound(result)) return { ok: true, data: normalizeProgress({}) };

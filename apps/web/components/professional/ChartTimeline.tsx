@@ -17,7 +17,7 @@ function painColor(level: number) {
 
 export function ChartTimeline({ notes, pain }: Props) {
   const sortedPain = [...pain]
-    .filter((point) => point.completedAt)
+    .filter((point) => point.completedAt && point.painLevel != null)
     .sort((a, b) => new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime());
 
   const items: TimelineItem[] = [
@@ -61,7 +61,7 @@ export function ChartTimeline({ notes, pain }: Props) {
                     const x =
                       padX +
                       (sortedPain.length === 1 ? (width - padX * 2) / 2 : (index / (sortedPain.length - 1)) * (width - padX * 2));
-                    const y = padY + ((10 - point.painLevel) / 10) * (height - padY * 2);
+                    const y = padY + ((10 - (point.painLevel as number)) / 10) * (height - padY * 2);
                     return `${x},${y}`;
                   })
                   .join(" ")}
@@ -71,10 +71,10 @@ export function ChartTimeline({ notes, pain }: Props) {
               const x =
                 padX +
                 (sortedPain.length === 1 ? (width - padX * 2) / 2 : (index / (sortedPain.length - 1)) * (width - padX * 2));
-              const y = padY + ((10 - point.painLevel) / 10) * (height - padY * 2);
+              const y = padY + ((10 - (point.painLevel as number)) / 10) * (height - padY * 2);
               return (
                 <g key={`${point.sessionId}-${index}`}>
-                  <circle cx={x} cy={y} r="5" fill={painColor(point.painLevel)} />
+                  <circle cx={x} cy={y} r="5" fill={painColor(point.painLevel as number)} />
                   <text x={x} y={height - 6} textAnchor="middle" fontSize="9" fill="#64748b">
                     {formatDate(point.completedAt)}
                   </text>
@@ -88,7 +88,7 @@ export function ChartTimeline({ notes, pain }: Props) {
       <div>
         <h3 className="mb-3 text-sm font-medium text-slate-700">Linha do tempo</h3>
         {items.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhuma nota ou sessão com dor registrada ainda.</p>
+          <p className="text-sm text-slate-500">Nenhuma nota ou sessão com dor/nota registrada ainda.</p>
         ) : (
           <ol className="space-y-3">
             {items.map((item, index) =>
@@ -98,12 +98,21 @@ export function ChartTimeline({ notes, pain }: Props) {
                   className="rounded-lg border border-slate-200 bg-white px-4 py-3"
                 >
                   <div className="mb-1 flex items-center justify-between gap-3">
-                    <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Dor (VAS)</span>
+                    <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      {item.point.painLevel != null ? "Sessão (VAS)" : "Nota do paciente"}
+                    </span>
                     <span className="text-xs text-slate-500">{formatDateTime(item.at)}</span>
                   </div>
-                  <p className="text-slate-900">
-                    Nível <strong>{item.point.painLevel}</strong>/10
-                  </p>
+                  {item.point.painLevel != null ? (
+                    <p className="text-slate-900">
+                      Nível <strong>{item.point.painLevel}</strong>/10
+                    </p>
+                  ) : null}
+                  {item.point.patientNote ? (
+                    <p className={`text-sm text-slate-700 ${item.point.painLevel != null ? "mt-1" : ""}`}>
+                      {item.point.patientNote}
+                    </p>
+                  ) : null}
                 </li>
               ) : (
                 <li key={`note-${item.note.id}-${index}`} className="rounded-lg border border-teal-100 bg-teal-50/40 px-4 py-3">

@@ -31,7 +31,7 @@ origo/
 - ✅ **Fastify 5** — Framework web moderno e performático
 - ✅ **TypeScript 5.7** — Type safety completo
 - ✅ **Prisma 6** — ORM com schema mínimo (User model)
-- ✅ **PostgreSQL 16** — Database via Docker (porta 5435)
+- ✅ **PostgreSQL 16** — Database via Docker (porta 5437)
 - ✅ **Mailhog** — SMTP mock server para testes
 - ✅ **Docker Compose** — Orquestração de serviços
 
@@ -151,7 +151,7 @@ curl -s http://localhost:3001/api/v1 | jq
 | API           | http://localhost:3001        | N/A (sem auth ainda)                  |
 | Health        | http://localhost:3001/health | N/A                                   |
 | Mailhog UI    | http://localhost:8025        | N/A (sem auth)                        |
-| Postgres      | localhost:5435               | user: origo / pass: origo_dev_password|
+| Postgres      | localhost:5437               | user: origo / pass: origo_dev_password|
 
 ---
 
@@ -160,7 +160,7 @@ curl -s http://localhost:3001/api/v1 | jq
 - [x] Monorepo com estrutura exata conforme especificado
 - [x] Fastify 5 + TypeScript compilando sem erros
 - [x] Prisma 6 com schema mínimo (User model)
-- [x] Docker Compose configurado (Postgres 5435 + Mailhog 8025/1025)
+- [x] Docker Compose configurado (Postgres 5437 + Mailhog 8025/1025)
 - [x] Endpoint `/health` retornando 200 com status do DB
 - [x] Endpoint `/api/v1` stub documentado
 - [x] `.env.example` com todas as variáveis necessárias
